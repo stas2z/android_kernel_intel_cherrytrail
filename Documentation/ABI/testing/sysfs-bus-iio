@@ -891,3 +891,15 @@ Contact:	linux-iio@vger.kernel.org
 Description:
 		This attribute is used to get/set the integration time in
 		seconds.
+
+What:		/sys/bus/iio/devices/iio:deviceX/in_magn_x_oversampling_ratio
+What:		/sys/bus/iio/devices/iio:deviceX/in_magn_y_oversampling_ratio
+What:		/sys/bus/iio/devices/iio:deviceX/in_magn_z_oversampling_ratio
+KernelVersion:	4.2
+Contact:	linux-iio@vger.kernel.org
+Description:
+		Hardware applied number of measurements for acquiring one
+		data point. The HW will do <type>[_name]_oversampling_ratio
+		measurements and return the average value as output data. Each
+		value resulted from <type>[_name]_oversampling_ratio measurements
+		is considered as one sample for <type>[_name]_sampling_frequency.

@@ -106,6 +106,7 @@ static const char * const iio_chan_info_postfix[] = {
 	[IIO_CHAN_INFO_HARDWAREGAIN] = "hardwaregain",
 	[IIO_CHAN_INFO_HYSTERESIS] = "hysteresis",
 	[IIO_CHAN_INFO_INT_TIME] = "integration_time",
+	[IIO_CHAN_INFO_OVERSAMPLING_RATIO] = "oversampling_ratio",
 };
 
 /**
