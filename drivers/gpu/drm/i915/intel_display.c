@@ -5971,8 +5971,15 @@ void intel_connector_dpms(struct drm_connector *connector, int mode)
 	intel_display_power_get(dev_priv, PIPE_A);
 
 	/* Only need to change hw state when actually enabled */
-	if (connector->encoder)
-		intel_encoder_dpms(to_intel_encoder(connector->encoder), mode);
+	if (connector->encoder) {
+		if (mode == DRM_MODE_DPMS_ON && dev_priv->is_first_modeset) {
+			intel_modeset_setup_hw_state(dev, true);
+			dev_priv->is_first_modeset = false;
+		} else {
+			intel_encoder_dpms(to_intel_encoder(connector->encoder),
+					   mode);
+		}
+	}
 
 	if (mode == DRM_MODE_DPMS_ON)
 		intel_modeset_check_state(connector->dev);
