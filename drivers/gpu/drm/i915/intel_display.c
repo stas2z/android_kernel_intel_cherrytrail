@@ -5412,18 +5412,9 @@ static void valleyview_crtc_enable(struct drm_crtc *crtc)
 			vlv_enable_pll(intel_crtc);
 	}
 
-	for_each_encoder_on_crtc(dev, crtc, encoder) {
+	for_each_encoder_on_crtc(dev, crtc, encoder)
 		if (encoder->pre_enable)
 			encoder->pre_enable(encoder);
-
-		if (encoder->type == INTEL_OUTPUT_DSI) {
-			/*
-			 * For DSI recommended to enable
-			 * PORT before plane and pipe
-			 */
-			encoder->enable(encoder);
-		}
-	}
 
 	i9xx_pfit_enable(intel_crtc);
 
@@ -5441,11 +5432,8 @@ static void valleyview_crtc_enable(struct drm_crtc *crtc)
 
 	intel_enable_pipe(intel_crtc);
 
-	for_each_encoder_on_crtc(dev, crtc, encoder) {
-		if (encoder->type != INTEL_OUTPUT_DSI)
-			/* For DSI already enabled above */
-			encoder->enable(encoder);
-	}
+	for_each_encoder_on_crtc(dev, crtc, encoder)
+		encoder->enable(encoder);
 
 	intel_crtc_enable_planes(crtc);
 	intel_update_drrs(dev);
