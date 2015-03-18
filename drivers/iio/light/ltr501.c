@@ -16,6 +16,7 @@
 #include <linux/i2c.h>
 #include <linux/err.h>
 #include <linux/delay.h>
+#include <linux/acpi.h>
 
 #include <linux/iio/iio.h>
 #include <linux/iio/sysfs.h>
@@ -421,6 +422,12 @@ static int ltr501_resume(struct device *dev)
 
 static SIMPLE_DEV_PM_OPS(ltr501_pm_ops, ltr501_suspend, ltr501_resume);
 
+static const struct acpi_device_id ltr_acpi_match[] = {
+	{"LTER0501", 0},
+	{ },
+};
+MODULE_DEVICE_TABLE(acpi, ltr_acpi_match);
+
 static const struct i2c_device_id ltr501_id[] = {
 	{ "ltr501", 0 },
 	{ }
@@ -431,6 +438,7 @@ static struct i2c_driver ltr501_driver = {
 	.driver = {
 		.name   = LTR501_DRV_NAME,
 		.pm	= &ltr501_pm_ops,
+		.acpi_match_table = ACPI_PTR(ltr_acpi_match),
 		.owner  = THIS_MODULE,
 	},
 	.probe  = ltr501_probe,
