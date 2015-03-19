@@ -46,10 +46,17 @@
 
 #define LTR501_PS_DATA_MASK 0x7ff
 
+enum ltr_chipset {
+	LTR301,
+	LTR501,
+	LTR_MAX_CHIPS /* this must be last */
+};
+
 struct ltr501_data {
 	struct i2c_client *client;
 	struct mutex lock_als, lock_ps;
 	u8 als_contr, ps_contr;
+	u8 chip_id;
 };
 
 static int ltr501_drdy(struct ltr501_data *data, u8 drdy_mask)
@@ -123,6 +130,13 @@ static const struct iio_chan_spec ltr501_channels[] = {
 		},
 	},
 	IIO_CHAN_SOFT_TIMESTAMP(3),
+};
+
+static const struct iio_chan_spec ltr301_channels[] = {
+	LTR501_INTENSITY_CHANNEL(0, LTR501_ALS_DATA0, IIO_MOD_LIGHT_BOTH, 0),
+	LTR501_INTENSITY_CHANNEL(1, LTR501_ALS_DATA1, IIO_MOD_LIGHT_IR,
+		BIT(IIO_CHAN_INFO_SCALE)),
+	IIO_CHAN_SOFT_TIMESTAMP(2),
 };
 
 static const int ltr501_ps_gain[4][2] = {
@@ -245,14 +259,30 @@ static struct attribute *ltr501_attributes[] = {
 	NULL
 };
 
+static struct attribute *ltr301_attributes[] = {
+	&iio_const_attr_in_intensity_scale_available.dev_attr.attr,
+	NULL
+};
+
 static const struct attribute_group ltr501_attribute_group = {
 	.attrs = ltr501_attributes,
+};
+
+static const struct attribute_group ltr301_attribute_group = {
+	.attrs = ltr301_attributes,
 };
 
 static const struct iio_info ltr501_info = {
 	.read_raw = ltr501_read_raw,
 	.write_raw = ltr501_write_raw,
 	.attrs = &ltr501_attribute_group,
+	.driver_module = THIS_MODULE,
+};
+
+static const struct iio_info ltr301_info = {
+	.read_raw = ltr501_read_raw,
+	.write_raw = ltr501_write_raw,
+	.attrs = &ltr301_attribute_group,
 	.driver_module = THIS_MODULE,
 };
 
@@ -339,6 +369,7 @@ static int ltr501_probe(struct i2c_client *client,
 {
 	struct ltr501_data *data;
 	struct iio_dev *indio_dev;
+	const struct acpi_device_id *acpi_id;
 	int ret;
 
 	indio_dev = devm_iio_device_alloc(&client->dev, sizeof(*data));
@@ -348,6 +379,20 @@ static int ltr501_probe(struct i2c_client *client,
 	data = iio_priv(indio_dev);
 	i2c_set_clientdata(client, indio_dev);
 	data->client = client;
+
+	/* TODO: Add condition for ACPI */
+	if (id) {
+		data->chip_id = id->driver_data;
+	} else if (ACPI_HANDLE(&client->dev)) {
+		acpi_id = acpi_match_device(
+				       client->dev.driver->acpi_match_table,
+				       &client->dev);
+		if (!acpi_id)
+			return -ENODEV;
+		data->chip_id = acpi_id->driver_data;
+	} else
+		return -ENODEV;
+
 	mutex_init(&data->lock_als);
 	mutex_init(&data->lock_ps);
 
@@ -358,11 +403,23 @@ static int ltr501_probe(struct i2c_client *client,
 		return -ENODEV;
 
 	indio_dev->dev.parent = &client->dev;
-	indio_dev->info = &ltr501_info;
-	indio_dev->channels = ltr501_channels;
 	indio_dev->num_channels = ARRAY_SIZE(ltr501_channels);
 	indio_dev->name = LTR501_DRV_NAME;
 	indio_dev->modes = INDIO_DIRECT_MODE;
+
+	switch (data->chip_id) {
+	case LTR301:
+		indio_dev->info = &ltr301_info;
+		indio_dev->channels = ltr301_channels;
+		break;
+	case LTR501:
+		indio_dev->info = &ltr501_info;
+		indio_dev->channels = ltr501_channels;
+		break;
+	default:
+		dev_warn(&client->dev, "ltr chip invalid\n");
+		return -ENODEV;
+	}
 
 	ret = ltr501_init(data);
 	if (ret < 0)
@@ -423,13 +480,15 @@ static int ltr501_resume(struct device *dev)
 static SIMPLE_DEV_PM_OPS(ltr501_pm_ops, ltr501_suspend, ltr501_resume);
 
 static const struct acpi_device_id ltr_acpi_match[] = {
-	{"LTER0501", 0},
+	{"LTER0301", LTR301},
+	{"LTER0501", LTR501},
 	{ },
 };
 MODULE_DEVICE_TABLE(acpi, ltr_acpi_match);
 
 static const struct i2c_device_id ltr501_id[] = {
-	{ "ltr501", 0 },
+	{ "ltr301", LTR301 },
+	{ "ltr501", LTR501 },
 	{ }
 };
 MODULE_DEVICE_TABLE(i2c, ltr501_id);
