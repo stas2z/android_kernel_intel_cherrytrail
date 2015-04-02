@@ -75,6 +75,16 @@ void memcpy32_toio(void *dst, const void *src, int count)
 		writel(*src_32++, dst_32++);
 }
 
+void memcpy32_fromio(void *dst, const void *src, int count)
+{
+	int i;
+	const u32 *src_32 = src;
+	u32 *dst_32 = dst;
+
+	for (i = 0; i < count/sizeof(u32); i++) {
+		*dst_32++ = readl(src_32++);
+	}
+}
 /**
  * intel_sst_reset_dsp_medfield - Resetting SST DSP
  *
@@ -1535,6 +1545,7 @@ int sst_load_fw(void)
 {
 	int ret_val = 0;
 	struct sst_block *block;
+	u64 regrw2 = 0;
 
 	pr_debug("sst_load_fw\n");
 
@@ -1560,6 +1571,11 @@ int sst_load_fw(void)
 	pm_qos_update_request(sst_drv_ctx->qos, CSTATE_EXIT_LATENCY_S0i1 - 1);
 
 	sst_drv_ctx->sst_state = SST_FW_LOADING;
+
+	if (sst_drv_ctx->pci_id == SST_BYT_PCI_ID) {
+		regrw2 = 0x7fe; //disable lpe clock gating
+		sst_write_bar1_clock_gating_register(sst_drv_ctx->bar1, regrw2);
+	}
 
 	ret_val = sst_drv_ctx->ops->reset();
 	if (ret_val)

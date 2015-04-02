@@ -510,6 +510,9 @@ struct intel_sst_drv {
 	unsigned int		dram_end;
 	unsigned int		ddr_end;
 	unsigned int		ddr_base;
+	unsigned int		bar1_end;
+	unsigned int		bar1_base;
+	void __iomem		*bar1;
 	unsigned int		mailbox_recv_offset;
 	unsigned int		mailbox_size;
 	atomic_t		pm_usage_count;
@@ -695,6 +698,8 @@ int sst_alloc_stream_mrfld(char *params, struct sst_block *block);
 void sst_restore_fw_context(void);
 struct sst_block *sst_create_block(struct intel_sst_drv *ctx,
 				u32 msg_id, u32 drv_id);
+void memcpy32_toio(void *dst, const void *src, int count);
+void memcpy32_fromio(void *dst, const void *src, int count);
 int sst_create_block_and_ipc_msg(struct ipc_post **arg, bool large,
 		struct intel_sst_drv *sst_drv_ctx, struct sst_block **block,
 		u32 msg_id, u32 drv_id);
@@ -726,6 +731,8 @@ void sst_recovery_free(struct intel_sst_drv *sst_drv_ctx);
 int sst_set_timer(struct sst_monitor_lpe *monitor_lpe, bool enable);
 void sst_timer_cb(unsigned long data);
 void sst_dump_to_buffer(const void *from, size_t from_len, char *buf);
+
+inline void sst_write_bar1_clock_gating_register(void __iomem *bar1, u64 val_2);
 
 extern int intel_scu_ipc_simple_command(int, int);
 void sst_stream_recovery(struct intel_sst_drv *sst);

@@ -419,7 +419,7 @@ static int sst_platform_get_resources_edk(struct intel_sst_drv *ctx,
 		pr_err("Invalid SHIM base from IFWI");
 		return -EIO;
 	}
-	pr_err("LPE base: %#x size:%#x", (unsigned int) rsrc->start,
+	pr_info("LPE base_0: %#x size:%#x", (unsigned int) rsrc->start,
 					(unsigned int)resource_size(rsrc));
 
 	ctx->ssp0 = devm_ioremap_nocache(ctx->dev, (rsrc->start + 0xa0000),
@@ -482,11 +482,33 @@ static int sst_platform_get_resources_edk(struct intel_sst_drv *ctx,
 	/* reassign physical address to LPE viewpoint address */
 	ctx->mailbox_add = sst_drv_ctx->info.mailbox_start;
 
+	/************* Start Debug ************/
+	rsrc = platform_get_resource(pdev, IORESOURCE_MEM, 1);
+	if (!rsrc) {
+		pr_err("Invalid base from IFWI");
+		return -EIO;
+	}
+	pr_info("LPE base_1: %#x size:%#x", (unsigned int) rsrc->start,
+					(unsigned int)resource_size(rsrc));
+
+	ctx->bar1_base = rsrc->start;
+	ctx->bar1_end = rsrc->end;
+
+	ctx->bar1 = devm_ioremap_nocache(ctx->dev, ctx->bar1_base,
+					resource_size(rsrc));
+	if (!ctx->bar1) {
+		pr_err("unable to map bar1");
+		return -EIO;
+	}
+	/************* End Debug ************/
+
 	rsrc = platform_get_resource(pdev, IORESOURCE_MEM, 2);
 	if (!rsrc) {
 		pr_err("Invalid DDR base from IFWI");
 		return -EIO;
 	}
+	pr_info("LPE base_2: %#x size:%#x", (unsigned int) rsrc->start,
+					(unsigned int)resource_size(rsrc));
 	ctx->ddr_base = rsrc->start;
 	ctx->ddr_end = rsrc->end;
 	pr_err("DDR base: %#x", ctx->ddr_base);

@@ -1206,6 +1206,13 @@ static inline void sst_restore_shim64(struct intel_sst_drv *ctx,
 	spin_unlock_irqrestore(&ctx->ipc_spin_lock, irq_flags);
 }
 
+#define SST_BAR1_REGRW2_OFF	0xA4
+
+inline void sst_write_bar1_clock_gating_register(void __iomem *bar1, u64 val_2)
+{
+	memcpy32_toio(bar1 + SST_BAR1_REGRW2_OFF, &val_2, sizeof(val_2));
+}
+
 /*
  * The runtime_suspend/resume is pretty much similar to the legacy
  * suspend/resume with the noted exception below: The PCI core takes care of
