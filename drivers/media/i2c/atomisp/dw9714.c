@@ -442,6 +442,7 @@ static void dw9714_verify_and_set_mode(struct dw9714_device *dev,
 static int dw9714_vcm_init(struct i2c_client *client, struct dw9714_device *dev)
 {
 	const struct dw9714_chip_features *chip;
+	struct dw9714_control *ctrl;
 
 	chip = dw9714_detect(client, dev);
 	if (!chip)
@@ -450,6 +451,13 @@ static int dw9714_vcm_init(struct i2c_client *client, struct dw9714_device *dev)
 	dw9714_verify_and_set_mode(dev, chip);
 	dev->vcm_ctrl.ops = &dw9714_vcm_ops;
 	dev->platform_data = camera_get_af_platform_data();
+
+	ctrl = dw9714_find_control(V4L2_CID_FOCUS_ABSOLUTE);
+	if (ctrl) {
+		ctrl->qc.default_value = gmin_get_var_int(&client->dev,
+							  "VcmInitPos",
+							  ctrl->qc.default_value);
+	}
 
 	return dev->platform_data ? 0 : -ENODEV;
 }
