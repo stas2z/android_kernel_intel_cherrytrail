@@ -163,10 +163,50 @@ static int inv_mpu_process_acpi_config(struct i2c_client *client,
 	return 0;
 }
 
+static acpi_status acpi_hid_match(acpi_handle handle, u32 level,
+				  void *data, void **return_value)
+{
+	struct acpi_device *adev;
+	const char *adev_hid;
+	char *idstr;
+
+	idstr = data;
+
+	if (acpi_bus_get_device(handle, &adev))
+		return AE_OK;
+
+	adev_hid = acpi_device_hid(adev);
+
+	if (!adev_hid)
+		return AE_OK;
+
+	if (!strcmp(adev_hid, idstr)) {
+		*return_value = adev;
+		return AE_CTRL_TERMINATE;
+	}
+
+	return AE_OK;
+}
+
+static struct acpi_device *get_acpi_device_by_hid(acpi_handle start_handle,
+						  char *hid)
+{
+	acpi_status status;
+	struct acpi_device *adev = NULL;
+
+	status = acpi_walk_namespace(ACPI_TYPE_DEVICE, start_handle, 1,
+				     acpi_hid_match, NULL,
+				     (void *)hid, (void **)&adev);
+
+	return adev;
+}
+
 int inv_mpu_acpi_create_mux_client(struct inv_mpu6050_state *st)
 {
+	struct acpi_device *client_adev;
 
 	st->mux_client = NULL;
+
 	if (ACPI_HANDLE(&st->client->dev)) {
 		struct i2c_board_info info;
 		struct acpi_device *adev;
@@ -212,10 +252,16 @@ int inv_mpu_acpi_create_mux_client(struct inv_mpu6050_state *st)
 			} else
 				return -ENODEV;
 		}
+
+		client_adev = get_acpi_device_by_hid(
+					ACPI_HANDLE(&st->client->dev),
+					info.type);
+		if (client_adev)
+			info.acpi_node.companion = client_adev;
+
 		st->mux_client = i2c_new_device(st->mux_adapter, &info);
 		if (!st->mux_client)
 			return -ENODEV;
-
 	}
 
 	return 0;
