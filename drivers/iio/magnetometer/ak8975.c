@@ -478,7 +478,7 @@ static const struct iio_info ak8975_info = {
 
 static const struct acpi_device_id inv_acpi_match[] = {
 	{"AK8975", 0},
-	{"AK8963", AK8963},
+	{"AK896300", AK8963},
 	{"INVN6500", AK8963},
 	{ },
 };
