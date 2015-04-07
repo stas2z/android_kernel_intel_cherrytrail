@@ -100,6 +100,7 @@ struct dw_i2c_dev {
 	unsigned int		rx_fifo_depth;
 	int			rx_outstanding;
 	u32			sda_hold_time;
+	u32			sda_setup_time;
 	u16			ss_hcnt;
 	u16			ss_lcnt;
 	u16			fs_hcnt;
@@ -125,3 +126,4 @@ extern void i2c_dw_disable(struct dw_i2c_dev *dev);
 extern void i2c_dw_clear_int(struct dw_i2c_dev *dev);
 extern void i2c_dw_disable_int(struct dw_i2c_dev *dev);
 extern u32 i2c_dw_read_comp_param(struct dw_i2c_dev *dev);
+extern void dw_i2c_update_defaults(struct dw_i2c_dev *dev);

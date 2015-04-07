@@ -68,6 +68,7 @@
 #define DW_IC_RXFLR		0x78
 #define DW_IC_SDA_HOLD		0x7c
 #define DW_IC_TX_ABRT_SOURCE	0x80
+#define DW_IC_SDA_SETUP		0x94
 #define DW_IC_ENABLE_STATUS	0x9c
 #define DW_IC_COMP_PARAM_1	0xf4
 #define DW_IC_COMP_VERSION	0xf8
@@ -96,6 +97,9 @@
 					 DW_IC_INTR_TX_EMPTY | \
 					 DW_IC_INTR_TX_ABRT | \
 					 DW_IC_INTR_STOP_DET)
+
+#define DW_IC_DEFAULT_SDA_SETUP	0x64
+#define DW_IC_DEFAULT_SDA_HOLD	0x1
 
 #define DW_IC_STATUS_ACTIVITY	0x1
 
@@ -278,6 +282,35 @@ static void __i2c_dw_enable(struct dw_i2c_dev *dev, bool enable)
 		 enable ? "en" : "dis");
 }
 
+/*
+ * Update device default param values if its changed by
+ * firmware
+ */
+void dw_i2c_update_defaults(struct dw_i2c_dev *dev)
+{
+	int ret;
+
+	/*
+	 * make sure default is not updated by firmware
+	 * interfaces like OF or ACPI
+	 */
+
+	/* SDA hold time update */
+	if (!dev->sda_hold_time) {
+		ret = dw_readl(dev, DW_IC_SDA_HOLD);
+		if ((ret > 0) && (ret != DW_IC_DEFAULT_SDA_HOLD))
+			dev->sda_hold_time = ret;
+	}
+
+	/* SDA setup time update */
+	if (!dev->sda_setup_time) {
+		ret = dw_readl(dev, DW_IC_SDA_SETUP);
+		if ((ret > 0) && (ret != DW_IC_DEFAULT_SDA_SETUP))
+			dev->sda_setup_time = ret;
+	}
+}
+EXPORT_SYMBOL_GPL(dw_i2c_update_defaults);
+
 /**
  * i2c_dw_init() - initialize the designware i2c master hardware
  * @dev: device private data
@@ -381,6 +414,10 @@ int i2c_dw_init(struct dw_i2c_dev *dev)
 			dev_warn(dev->dev,
 				"Hardware too old to adjust SDA hold time.");
 	}
+
+	/* Configure SDA setup time if required */
+	if (dev->sda_setup_time)
+		dw_writel(dev, dev->sda_setup_time, DW_IC_SDA_SETUP);
 
 	/* Configure Tx/Rx FIFO threshold levels */
 	dw_writel(dev, dev->tx_fifo_depth - 1, DW_IC_TX_TL);

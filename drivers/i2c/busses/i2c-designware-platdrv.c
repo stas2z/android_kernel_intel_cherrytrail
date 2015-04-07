@@ -336,6 +336,10 @@ static int dw_i2c_probe(struct platform_device *pdev)
 		dev->adapter.nr = pdev->id;
 	}
 
+
+	/* call after firmware param update */
+	dw_i2c_update_defaults(dev);
+
 	r = i2c_dw_init(dev);
 	if (r)
 		return r;
