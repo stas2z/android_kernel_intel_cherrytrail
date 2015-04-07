@@ -185,6 +185,9 @@
 #define DEV_NAME			"dollar_cove_charger"
 #define VBUS_CTRL_CDEV_NAME		"vbus_control"
 
+/* No of times we should retry on EAGAIN/ETIMEOUT error */
+#define NR_RETRY_CNT			3
+
 enum {
 	VBUS_OV_IRQ = 0,
 	CHARGE_DONE_IRQ,
@@ -259,9 +262,15 @@ static enum power_supply_property pmic_chrg_usb_props[] = {
 
 static int pmic_chrg_reg_readb(struct pmic_chrg_info *info, int reg)
 {
-	int ret;
+	int ret, i;
 
-	ret = intel_soc_pmic_readb(reg);
+	for (i = 0; i < NR_RETRY_CNT; i++) {
+		ret = intel_soc_pmic_readb(reg);
+		if (ret == -EAGAIN || ret == -ETIMEDOUT)
+			continue;
+		else
+			break;
+	}
 	if (ret < 0)
 		dev_err(&info->pdev->dev, "pmic reg read err:%d\n", ret);
 
@@ -270,9 +279,15 @@ static int pmic_chrg_reg_readb(struct pmic_chrg_info *info, int reg)
 
 static int pmic_chrg_reg_writeb(struct pmic_chrg_info *info, int reg, u8 val)
 {
-	int ret;
+	int ret, i;
 
-	ret = intel_soc_pmic_writeb(reg, val);
+	for (i = 0; i < NR_RETRY_CNT; i++) {
+		ret = intel_soc_pmic_writeb(reg, val);
+		if (ret == -EAGAIN || ret == -ETIMEDOUT)
+			continue;
+		else
+			break;
+	}
 	if (ret < 0)
 		dev_err(&info->pdev->dev, "pmic reg write err:%d\n", ret);
 
@@ -281,9 +296,15 @@ static int pmic_chrg_reg_writeb(struct pmic_chrg_info *info, int reg, u8 val)
 
 static int pmic_chrg_reg_setb(struct pmic_chrg_info *info, int reg, u8 mask)
 {
-	int ret;
+	int ret, i;
 
-	ret = intel_soc_pmic_setb(reg, mask);
+	for (i = 0; i < NR_RETRY_CNT; i++) {
+		ret = intel_soc_pmic_setb(reg, mask);
+		if (ret == -EAGAIN || ret == -ETIMEDOUT)
+			continue;
+		else
+			break;
+	}
 	if (ret < 0)
 		dev_err(&info->pdev->dev, "pmic reg set mask err:%d\n", ret);
 
@@ -292,9 +313,15 @@ static int pmic_chrg_reg_setb(struct pmic_chrg_info *info, int reg, u8 mask)
 
 static int pmic_chrg_reg_clearb(struct pmic_chrg_info *info, int reg, u8 mask)
 {
-	int ret;
+	int ret, i;
 
-	ret = intel_soc_pmic_clearb(reg, mask);
+	for (i = 0; i < NR_RETRY_CNT; i++) {
+		ret = intel_soc_pmic_clearb(reg, mask);
+		if (ret == -EAGAIN || ret == -ETIMEDOUT)
+			continue;
+		else
+			break;
+	}
 	if (ret < 0)
 		dev_err(&info->pdev->dev, "pmic reg set mask err:%d\n", ret);
 
