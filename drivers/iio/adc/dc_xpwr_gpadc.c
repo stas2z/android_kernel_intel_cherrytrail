@@ -158,7 +158,7 @@ static int iio_dc_xpwr_gpadc_sample(struct iio_dev *indio_dev,
 		if (ch & (1 << i)) {
 			th = intel_soc_pmic_readb(gpadc_regmaps[i].rslth);
 			tl = intel_soc_pmic_readb(gpadc_regmaps[i].rsltl);
-			res->data[i] = (th << 4) + ((tl >> 4) & 0x0F);
+			res->data[i] = (th << 4) + (tl & 0x0F);
 		}
 	}
 
