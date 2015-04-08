@@ -403,9 +403,15 @@ static int pmic_fg_reg_writeb(struct pmic_fg_info *info, int reg, u8 val)
 
 static int pmic_fg_reg_setb(struct pmic_fg_info *info, int reg, u8 mask)
 {
-	int ret;
+	int ret, i;
 
-	ret = intel_soc_pmic_setb(reg, mask);
+	for (i = 0; i < NR_RETRY_CNT; i++) {
+		ret = intel_soc_pmic_setb(reg, mask);
+		if (ret == -EAGAIN || ret == -ETIMEDOUT)
+			continue;
+		else
+			break;
+	}
 	if (ret < 0)
 		dev_err(&info->pdev->dev, "pmic reg set mask err:%d\n", ret);
 	return ret;
@@ -413,9 +419,15 @@ static int pmic_fg_reg_setb(struct pmic_fg_info *info, int reg, u8 mask)
 
 static int pmic_fg_reg_clearb(struct pmic_fg_info *info, int reg, u8 mask)
 {
-	int ret;
+	int ret, i;
 
-	ret = intel_soc_pmic_clearb(reg, mask);
+	for (i = 0; i < NR_RETRY_CNT; i++) {
+		ret = intel_soc_pmic_clearb(reg, mask);
+		if (ret == -EAGAIN || ret == -ETIMEDOUT)
+			continue;
+		else
+			break;
+	}
 	if (ret < 0)
 		dev_err(&info->pdev->dev, "pmic reg set mask err:%d\n", ret);
 	return ret;
