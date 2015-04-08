@@ -287,7 +287,8 @@ static int wifi_plat_dev_drv_probe_acpi(struct platform_device *pdev)
 			adev->power.flags.ignore_parent = 1;
 		}
 #if defined(OOB_INTR_ONLY)
-		irq_num = desc_to_gpio(gpiod_get_index(&pdev->dev, NULL, 0));
+		irq_num = desc_to_gpio(gpiod_get_index(&pdev->dev,
+				       "bcmdhd_oob_irq", 0));
 		pr_err("%s: Using ACPI table to get GPIO number: %d\n", __FUNCTION__, irq_num);
 		if (irq_num > 0) {
 			irq_num = gpio_to_irq(irq_num);
