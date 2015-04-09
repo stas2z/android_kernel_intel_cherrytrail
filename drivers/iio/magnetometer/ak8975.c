@@ -233,7 +233,7 @@ static int ak8975_setup(struct i2c_client *client)
 				AK8975_REG_CNTL_MODE_MASK,
 				AK8975_REG_CNTL_MODE_SHIFT);
 
-	if (data->eoc_gpio > 0 || client->irq) {
+	if (data->eoc_gpio > 0 || client->irq > 0) {
 		ret = ak8975_setup_irq(data);
 		if (ret < 0) {
 			if (ret == -EBUSY) {
