@@ -77,6 +77,7 @@ static inline int platform_is(u8 model)
 #define CSTATE_EXIT_LATENCY_C2	 20
 #define CSTATE_EXIT_LATENCY_C4	 100
 #define CSTATE_EXIT_LATENCY_C6	 140
+#define CSTATE_EXIT_LATENCY_C7	 1200
 
 /* Since entry latency is substantial
  * put exit_latency = entry+exit latency

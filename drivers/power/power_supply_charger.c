@@ -10,6 +10,8 @@
 #include <linux/power/battery_id.h>
 #include <linux/notifier.h>
 #include <linux/usb/otg.h>
+#include <linux/pm_qos.h>
+#include <linux/intel_mid_pm.h>
 #include "power_supply.h"
 #include "power_supply_charger.h"
 
@@ -27,6 +29,7 @@ struct power_supply_charger {
 	struct work_struct algo_trigger_work;
 	struct mutex evt_lock;
 	wait_queue_head_t wait_chrg_enable;
+	struct pm_qos_request pm_qos;
 };
 
 struct charger_cable {
@@ -801,6 +804,27 @@ static void __power_supply_trigger_charging_handler(struct power_supply *psy)
 
 	mutex_lock(&psy_chrgr.evt_lock);
 
+	/* FIXME: WORKAROUND!!!
+	 * Need to prevent system from rapidly going into/out of S0i3
+	 * when consecutive read/write to PMIC registers is expected.
+	 * Some PMIC blocks may be switched off and takes time to
+	 * get back running (e.g. ADC). So keep those blocks running
+	 * to avoid false reads and erroneous writes.
+	 *
+	 * For devices that do not have external pull-up resistors on
+	 * the I2C bus, the internal pull-up may take some time to take
+	 * effect. This is further complicated by the fact that the kernel
+	 * does not have direct control of suspend/resume on the I2C
+	 * controller with PMIC. That is taken care of by PUNIT.
+	 *
+	 * So as a workaround, keep the system out of deep C-state
+	 * such that the PMIC is all active, and I2C controller does not
+	 * go into suspend. This is enabled by a quirk that is specifically
+	 * requested by the PMIC driver.
+	 */
+	pm_qos_update_request(&psy_chrgr.pm_qos,
+			      (CSTATE_EXIT_LATENCY_C7 - 1));
+
 	if (is_trigger_charging_algo(psy)) {
 
 		if (IS_BATTERY(psy)) {
@@ -829,6 +853,10 @@ static void __power_supply_trigger_charging_handler(struct power_supply *psy)
 		update_sysfs(psy);
 		power_supply_changed(psy);
 	}
+
+	pm_qos_update_request(&psy_chrgr.pm_qos,
+			      PM_QOS_DEFAULT_VALUE);
+
 	mutex_unlock(&psy_chrgr.evt_lock);
 
 }
@@ -1083,6 +1111,9 @@ int power_supply_register_charger(struct power_supply *psy)
 		INIT_LIST_HEAD(&psy_chrgr.batt_cache_lst);
 		INIT_WORK(&psy_chrgr.algo_trigger_work, trigger_algo_psy_class);
 		psy_chrgr.is_cable_evt_reg = true;
+
+		pm_qos_add_request(&psy_chrgr.pm_qos, PM_QOS_CPU_DMA_LATENCY,
+				PM_QOS_DEFAULT_VALUE);
 	}
 
 	SET_MAX_THROTTLE_STATE(psy);
