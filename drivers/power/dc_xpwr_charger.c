@@ -357,6 +357,10 @@ static inline int pmic_chrg_set_cc(struct pmic_chrg_info *info, int cc)
 	u8 reg_val;
 	int ret;
 
+	/* cap maximum charge current */
+	if (cc > info->pdata->max_cc)
+		cc = info->pdata->max_cc;
+
 	dev_info(&info->pdev->dev, "%s: cc=%d\n", __func__, cc);
 	/* read CCCV register */
 	ret = pmic_chrg_reg_readb(info, DC_CHRG_CCCV_REG);
@@ -381,17 +385,21 @@ static inline int pmic_chrg_set_cv(struct pmic_chrg_info *info, int cv)
 	u8 reg_val;
 	int ret;
 
+	/* cap maximum charge voltage */
+	if (cv > info->pdata->max_cv)
+		cv = info->pdata->max_cv;
+
 	dev_info(&info->pdev->dev, "%s: cv=%d\n", __func__, cv);
 	/* read CCCV register */
 	ret = pmic_chrg_reg_readb(info, DC_CHRG_CCCV_REG);
 	if (ret < 0)
 		goto set_cv_fail;
 
-	if (cv < CV_4100)
+	if (cv <= CV_4100)
 		reg_val = CHRG_CCCV_CV_4100MV;
-	else if (cv < CV_4150)
+	else if (cv <= CV_4150)
 		reg_val = CHRG_CCCV_CV_4150MV;
-	else if (cv < CV_4200)
+	else if (cv <= CV_4200)
 		reg_val = CHRG_CCCV_CV_4200MV;
 	else
 		reg_val = CHRG_CCCV_CV_4350MV;
@@ -651,10 +659,10 @@ static int pmic_chrg_usb_set_property(struct power_supply *psy,
 		info->cv = val->intval;
 		break;
 	case POWER_SUPPLY_PROP_MAX_CHARGE_CURRENT:
-		info->max_cc = val->intval;
+		info->max_cc = min(info->pdata->max_cc, val->intval);
 		break;
 	case POWER_SUPPLY_PROP_MAX_CHARGE_VOLTAGE:
-		info->max_cv = val->intval;
+		info->max_cv = min(info->pdata->max_cv, val->intval);
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_TERM_CUR:
 		info->iterm = val->intval;
