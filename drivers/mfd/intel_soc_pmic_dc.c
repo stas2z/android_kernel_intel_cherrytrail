@@ -412,7 +412,11 @@ static void dc_xpwr_chrg_pdata(void)
 {
 	static struct dollarcove_chrg_pdata pdata;
 	struct gpio_desc *gpio_desc;
+	struct ps_pse_mod_prof *prof;
+	int i, diff;
+	struct ps_temp_chg_table *entry;
 
+	/* Default parameters */
 	pdata.max_cc = 2000;
 	pdata.max_cv = 4350;
 	pdata.def_cc = 500;
@@ -433,15 +437,42 @@ static void dc_xpwr_chrg_pdata(void)
 
 	platform_init_chrg_params(&pdata);
 
+	/* Do some sanity checks */
+	prof = (struct ps_pse_mod_prof *)pdata.chg_profile->batt_prof;
+	pdata.max_cv = min_t(u16, pdata.max_cv, prof->voltage_max);
+	pdata.def_cv = min_t(u16, pdata.def_cv, prof->voltage_max);
+
+	for (i = 0; i < prof->temp_mon_ranges; i++) {
+		entry = &prof->temp_mon_range[i];
+
+		if (entry->full_chrg_vol > pdata.max_cv)
+			entry->full_chrg_vol = pdata.max_cv;
+
+		if (entry->maint_chrg_vol_ul > pdata.max_cv) {
+			diff = entry->maint_chrg_vol_ul
+				- entry->maint_chrg_vol_ll;
+
+			entry->maint_chrg_vol_ul = pdata.max_cv;
+			entry->maint_chrg_vol_ll = pdata.max_cv - diff;
+		}
+	}
+
 	intel_soc_pmic_set_pdata("dollar_cove_charger",
 				(void *)&pdata, sizeof(pdata), 0);
 }
 
-static int fg_bat_curve[] = {
-	0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1, 0x2,
-	0x2, 0x3, 0x5, 0x9, 0xf, 0x18, 0x24, 0x29,
-    0x2e, 0x32, 0x35, 0x3b, 0x40, 0x45, 0x49, 0x4c,
-    0x50, 0x53, 0x55, 0x57, 0x5a, 0x5d, 0x61, 0x64,
+static u8 fg_bat_curve_4350mv[] = {
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x02,
+	0x02, 0x03, 0x05, 0x09, 0x0f, 0x18, 0x24, 0x29,
+	0x2e, 0x32, 0x35, 0x3b, 0x40, 0x45, 0x49, 0x4c,
+	0x50, 0x53, 0x55, 0x57, 0x5a, 0x5d, 0x61, 0x64,
+};
+
+static u8 fg_bat_curve_4200mv[] = {
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x01, 0x02,
+	0x02, 0x02, 0x04, 0x0b, 0x12, 0x1b, 0x27, 0x2e,
+	0x32, 0x36, 0x3a, 0x40, 0x45, 0x4a, 0x4e, 0x52,
+	0x57, 0x5b, 0x5e, 0x61, 0x64, 0x64, 0x64, 0x64,
 };
 
 #ifdef CONFIG_ACPI
@@ -494,6 +525,7 @@ static void dc_xpwr_get_fg_config_data(struct dollarcove_fg_pdata *pdata)
 {
 	int scaled_capacity;
 	int i;
+	u8 *fg_bat_curve;
 
 #ifdef CONFIG_ACPI
 	if (!dc_xpwr_get_acpi_cdata(pdata)) {
@@ -526,6 +558,11 @@ static void dc_xpwr_get_fg_config_data(struct dollarcove_fg_pdata *pdata)
 	/* Donot update the entire fg  data on every boot*/
 	pdata->cdata.fco = 0x00;
 	/* copy curve data */
+	if (pdata->design_max_volt == 4200)
+		fg_bat_curve = fg_bat_curve_4200mv;
+	else
+		fg_bat_curve = fg_bat_curve_4350mv;
+
 	for (i = 0; i < XPWR_BAT_CURVE_SIZE; i++)
 		pdata->cdata.bat_curve[i] = fg_bat_curve[i];
 
