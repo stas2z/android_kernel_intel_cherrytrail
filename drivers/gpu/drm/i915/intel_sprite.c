@@ -1944,7 +1944,19 @@ int intel_sprite_get_colorkey(struct drm_device *dev, void *data,
 	}
 
 	plane = obj_to_plane(obj);
+	if (!plane) {
+		ret = -ENOENT;
+		DRM_ERROR("Plane object is NULL\n");
+		goto out_unlock;
+	}
+
 	intel_plane = to_intel_plane(plane);
+	if (!intel_plane->get_colorkey) {
+		ret = -ENOENT;
+		DRM_ERROR("get_colorkey function pointer is NULL\n");
+		goto out_unlock;
+	}
+
 	intel_plane->get_colorkey(plane, get);
 
 out_unlock:
