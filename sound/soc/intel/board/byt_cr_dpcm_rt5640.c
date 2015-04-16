@@ -49,7 +49,7 @@
 
 #define BYT_T_JACK_RECHECK	300 /* ms */
 #define BYT_N_JACK_RECHECK	5
-#define BYT_T_BUTTONS_RECHECK	25 /* ms */
+#define BYT_T_BUTTONS_RECHECK	100 /* ms */
 
 enum {
 	RT5640_GPIO_JD_INT,
