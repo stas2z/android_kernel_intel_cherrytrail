@@ -8117,13 +8117,20 @@ void program_pfi_credits(struct drm_i915_private *dev_priv, bool flag)
 
 	intel_get_cd_cz_clk(dev_priv, &cd_clk, &cz_clk);
 
-	if (cd_clk >= cz_clk) {
+	if (cd_clk > cz_clk) {
 		if (IS_CHERRYVIEW(dev_priv->dev))
 			val |= PFI_CREDITS_63;
 		else if (IS_VALLEYVIEW(dev_priv->dev))
 			val |= PFI_CREDITS_15;
 		/* Disable before enabling */
 		I915_WRITE(GCI_CONTROL, VGA_FAST_MODE_DISABLE);
+		I915_WRITE(GCI_CONTROL, val);
+	} else if (cd_clk == cz_clk) {
+		if (IS_CHERRYVIEW(dev_priv->dev))
+			val |= PFI_CREDITS_63;
+		else if (IS_VALLEYVIEW(dev_priv->dev))
+			val |= PFI_CREDITS_11;
+
 		I915_WRITE(GCI_CONTROL, val);
 	} else {
 		if (IS_CHERRYVIEW(dev_priv->dev)) {

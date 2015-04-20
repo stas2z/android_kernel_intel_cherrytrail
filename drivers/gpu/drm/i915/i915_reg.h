@@ -480,6 +480,7 @@
 
 #define GCI_CONTROL	(dev_priv->info.display_mmio_offset + 0x650C)
 #define VGA_FAST_MODE_DISABLE	(1<<14)
+#define PFI_CREDITS_11		(3<<28)
 #define PFI_CREDITS_12		(4<<28)
 #define PFI_CREDITS_15		(7<<28)
 #define PFI_CREDITS_31		(8<<28)
