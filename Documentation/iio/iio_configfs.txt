@@ -1,0 +1,63 @@
+Industrial IIO configfs support
+
+1. Overview
+
+Configfs is a filesystem-based manager of kernel objects. IIO uses some
+objects that could be easily configured using configfs (e.g.: devices,
+triggers).
+
+See Documentation/filesystems/configfs/configfs.txt for more information
+about how configfs works.
+
+2. Usage
+
+In order to use configfs support in IIO we need to select it at compile
+time via CONFIG_IIO_CONFIGFS config option.
+
+Then, mount the configfs filesystem (usually under /config directory):
+
+$ mkdir /config
+$ mount -t configfs none /config
+
+At this point, all default IIO groups will be created and can be accessed
+under /config/iio. Next chapters will describe available IIO configuration
+objects.
+
+3. Software triggers
+
+One of the IIO default configfs groups is the "triggers" groups. It is
+automagically accessible when the configfs is mounted and can be found
+under /config/iio/triggers.
+
+Software triggers are created under /config/iio/triggers directory. A sofware
+trigger name MUST be of the following form:
+	* <trigger-type>-<trigger-name>:
+Where:
+	* <trigger-type>, specifies the interrupt source (e.g: hrtimer)
+	* <trigger-name>, spefcifies the IIO device trigger name
+
+We support now to following interrupt sources (trigger types):
+	* hrtimer, uses high resolution timers as interrupt source
+
+3.1 Software triggers creation and destruction
+
+As simply as:
+
+$ mkdir /config/triggers/<trigger-type>-<trigger-name>
+$ rmdir /config/triggers/<trigger-type>-<trigger-name>
+e.g:
+
+$ mkdir /config/triggers/hrtimer-instance1
+$ rmdir /config/triggers/hrtimer-instance1
+
+Each trigger can have one or more attributes specific to the trigger type.
+
+3.2 "hrtimer" trigger types attributes
+
+"hrtimer" trigger type has only one attribute:
+
+$ ls /config/triggers/hrtimer-instance1
+sampling_frequency
+
+sampling_frequency - represents the period in Hz between two consecutive
+iio_trigger_poll calls. By default it is set to 100Hz.
