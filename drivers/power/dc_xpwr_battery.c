@@ -151,9 +151,11 @@
 #define DC_FG_LOW_CAP_REG		0xE6
 #define FG_LOW_CAP_THR1_MASK		0xf0	/* 5% tp 20% */
 #define FG_LOW_CAP_THR1_VAL		0xa0	/* 15 perc */
+#define FG_LOW_CAP_THR1_POS		4
+#define FG_LOW_CAP_THR1_OFFSET		5
 #define FG_LOW_CAP_THR2_MASK		0x0f	/* 0% to 15% */
-#define FG_LOW_CAP_WARN_THR		14	/* 14 perc */
-#define FG_LOW_CAP_CRIT_THR		4	/* 4 perc */
+#define FG_LOW_CAP_WARN_THR		15	/* 14 perc */
+#define FG_LOW_CAP_CRIT_THR		5	/* 4 perc */
 #define FG_LOW_CAP_SHDN_THR		0	/* 0 perc */
 
 #define DC_FG_TUNING_CNTL0		0xE8
@@ -209,6 +211,8 @@ struct pmic_fg_info {
 
 	int			status;
 	int			btemp;
+	int			last_warning_thres;
+
 	/* Worker to monitor status and faults */
 	struct delayed_work status_monitor;
 };
@@ -288,6 +292,8 @@ struct xpwr_fg_sec_config_efi_data {
 	 */
 	u8   config_data[EFI_VAR_MAX_DATA];
 } __packed;
+
+static int __set_lowbatt_thresholds(struct pmic_fg_info *info, int capacity);
 
 static void
 dc_xpwr_dump_efi_var_data(struct xpwr_fg_sec_config_efi_data *vdata,
@@ -873,6 +879,8 @@ static void pmic_fg_status_monitor(struct work_struct *work)
 		cache_cap = present_cap;
 		cache_health = present_health;
 		cache_temp = info->btemp;
+
+		__set_lowbatt_thresholds(info, cache_cap);
 	} else if (((present_cap >= FULL_CAP_THLD)
 			&& (info->status == POWER_SUPPLY_STATUS_CHARGING))
 			|| (info->status == POWER_SUPPLY_STATUS_FULL)) {
@@ -1013,10 +1021,35 @@ static int pmic_fg_save_fg_config_params(struct pmic_fg_info *info)
 	return 0;
 }
 
+static int __set_lowbatt_thresholds(struct pmic_fg_info *info, int capacity)
+{
+	int ret = 0;
+	u8 reg_val = 0;
+
+	/* Use Warning Level 1 (WL1) for 5% and 15%,
+	 * and WL2 for 0%.
+	 */
+	if (capacity > FG_LOW_CAP_WARN_THR)
+		reg_val = FG_LOW_CAP_WARN_THR;
+	else
+		reg_val = FG_LOW_CAP_CRIT_THR;
+
+	if (reg_val != info->last_warning_thres) {
+		info->last_warning_thres = reg_val;
+		reg_val = (reg_val - FG_LOW_CAP_THR1_OFFSET)
+			    << FG_LOW_CAP_THR1_POS;
+
+		ret = pmic_fg_reg_writeb(info, DC_FG_LOW_CAP_REG, reg_val);
+		if (ret < 0)
+			dev_err(&info->pdev->dev, "write err:%d\n", ret);
+	}
+
+	return ret;
+}
+
 static int pmic_fg_set_lowbatt_thresholds(struct pmic_fg_info *info)
 {
 	int ret;
-	u8 reg_val;
 
 	ret = pmic_fg_reg_readb(info, DC_FG_REP_CAP_REG);
 	if (ret < 0) {
@@ -1025,19 +1058,7 @@ static int pmic_fg_set_lowbatt_thresholds(struct pmic_fg_info *info)
 	}
 	ret = (ret & FG_REP_CAP_VAL_MASK);
 
-	if (ret > FG_LOW_CAP_WARN_THR)
-		reg_val = FG_LOW_CAP_WARN_THR;
-	else if (ret > FG_LOW_CAP_CRIT_THR)
-		reg_val = FG_LOW_CAP_CRIT_THR;
-	else
-		reg_val = FG_LOW_CAP_SHDN_THR;
-
-	reg_val |= FG_LOW_CAP_THR1_VAL;
-	ret = pmic_fg_reg_writeb(info, DC_FG_LOW_CAP_REG, reg_val);
-	if (ret < 0)
-		dev_err(&info->pdev->dev, "%s:write err:%d\n", __func__, ret);
-
-	return ret;
+	return __set_lowbatt_thresholds(info, ret);
 }
 
 static int pmic_fg_program_vbatt_full(struct pmic_fg_info *info)
