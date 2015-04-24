@@ -1,0 +1,8 @@
+#
+# TD lock driver configuration
+#
+
+config TDLOCK
+	bool "Theft Deterrent lock driver"
+	depends on TCG_TPM && INTEL_MEI_TXE
+	default y
