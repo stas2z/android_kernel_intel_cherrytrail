@@ -60,6 +60,14 @@ static void mei_txe_pci_iounmap(struct pci_dev *pdev, struct mei_txe_hw *hw)
 		}
 	}
 }
+
+
+static struct mei_device *g_mei_dev;
+struct mei_device *get_mei_dev(void)
+{
+	return g_mei_dev;
+}
+
 /**
  * mei_probe - Device Initialization Routine
  *
@@ -169,6 +177,7 @@ static int mei_txe_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 		mei_txe_set_pm_domain(dev);
 
 	pm_runtime_put_noidle(&pdev->dev);
+	g_mei_dev = dev;
 
 	return 0;
 

@@ -1,0 +1,5 @@
+config IESPID
+	bool "IESPID driver"
+	depends on INTEL_MEI_TXE
+	default y
+

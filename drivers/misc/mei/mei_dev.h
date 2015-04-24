@@ -751,6 +751,8 @@ static inline void mei_dbgfs_deregister(struct mei_device *dev) {}
 int mei_register(struct mei_device *dev);
 void mei_deregister(struct mei_device *dev);
 
+struct mei_device *get_mei_dev(void);
+
 #define MEI_HDR_FMT "hdr:host=%02d me=%02d len=%d internal=%1d comp=%1d"
 #define MEI_HDR_PRM(hdr)                  \
 	(hdr)->host_addr, (hdr)->me_addr, \
