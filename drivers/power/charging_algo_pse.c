@@ -19,6 +19,9 @@
 */
 #define MAINT_EXIT_OFFSET 50  /* mV */
 
+/* Offset to max allowed voltage before stopping charging. (in mV) */
+#define VBATT_MAX_OFFSET	50
+
 static int get_tempzone(struct ps_pse_mod_prof *pse_mod_bprof,
 		int temp)
 {
@@ -163,7 +166,7 @@ static enum psy_algo_stat pse_get_next_cc_cv(struct batt_props bat_prop,
 		algo_stat = PSY_ALGO_STAT_CHARGE;
 	}
 
-	if (bat_prop.voltage_now > *cv) {
+	if (bat_prop.voltage_now > (*cv + VBATT_MAX_OFFSET)) {
 		algo_stat = PSY_ALGO_STAT_NOT_CHARGE;
 		return algo_stat;
 	}
