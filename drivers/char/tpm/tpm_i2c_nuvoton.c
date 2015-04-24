@@ -54,6 +54,8 @@
 
 #define I2C_DRIVER_NAME "tpm_i2c_nuvoton"
 
+#define I2C_CLASS_ANY 0xffff
+
 struct priv_data {
 	unsigned int intrs;
 };
@@ -515,6 +517,63 @@ static int get_vid(struct i2c_client *client, u32 *res)
 	return 0;
 }
 
+static const u8 vid_did_rid_value[] = { 0x50, 0x10, 0xfe, 0x00 };
+#define VID_DID_RID_SIZE sizeof(vid_did_rid_value)
+
+static int i2c_nuvoton_detect(struct i2c_client *client,
+			      struct i2c_board_info *info)
+{
+	struct i2c_adapter *adapter = client->adapter;
+	struct device *dev = &(client->dev);
+	u32 temp;
+	s32 rc;
+
+	if (!i2c_check_functionality(adapter, I2C_FUNC_SMBUS_BYTE_DATA))
+		return -ENODEV;
+
+	rc =  i2c_nuvoton_read_buf(client, TPM_VID_DID_RID, 4,
+				   (u8 *)(&temp));
+	if (rc < 0) {
+		dev_err(dev, "tpm_i2c_detect() fail read VID/DID/RID => %d",
+			rc);
+		return -ENODEV;
+	}
+	dev_dbg(dev, "tpm_i2c_detect() VID: %04X DID: %02X RID: %02X\n",
+		temp,
+		temp>>16, temp>>24);
+
+	/* check WPCT301 values - ignore RID */
+	if (memcmp(&temp, vid_did_rid_value, VID_DID_RID_SIZE - 1)) {
+		/*
+		 * f/w rev 2.81 has an issue where the VID_DID_RID is not
+		 * reporting the right value. so give it another chance at
+		 * offset 0x20 (FIFO_W).
+		 */
+		rc = i2c_nuvoton_read_buf(client, TPM_DATA_FIFO_W, 4,
+					  (u8 *)(&temp));
+		if (rc < 0) {
+			dev_err(dev,
+				"tpm_i2c_detect() fail to read VID/DID/RID. status=%d\n",
+				rc);
+			return -ENODEV;
+		}
+		dev_dbg(dev, "tpm_i2c_detect() VID: %04X DID: %02X RID: %02X\n",
+		       temp, temp>>16, temp>>24);
+
+		/* check WPCT301 values - ignore RID*/
+		if (memcmp(&temp, vid_did_rid_value, VID_DID_RID_SIZE - 1)) {
+			dev_err(dev,
+				"tpm_i2c_detect() WPCT301/NPCT501 not found\n");
+			return -ENODEV;
+		}
+	}
+
+	strlcpy(info->type, I2C_DRIVER_NAME, I2C_NAME_SIZE);
+	dev_info(dev, "tpm_i2c VID: %04X DID: %02X RID: %02X\n",
+		 temp, temp>>16, temp>>24);
+
+	return 0;
+}
 static int i2c_nuvoton_probe(struct i2c_client *client,
 			     const struct i2c_device_id *id)
 {
@@ -637,6 +696,8 @@ static int i2c_nuvoton_remove(struct i2c_client *client)
 	return 0;
 }
 
+/* I2C Addresses to scan */
+static const u16 normal_i2c[] = {0x57, I2C_CLIENT_END };
 
 static const struct i2c_device_id i2c_nuvoton_id[] = {
 	{I2C_DRIVER_NAME, 0},
@@ -659,11 +720,16 @@ static struct i2c_driver i2c_nuvoton_driver = {
 	.id_table = i2c_nuvoton_id,
 	.probe = i2c_nuvoton_probe,
 	.remove = i2c_nuvoton_remove,
+	.address_list = normal_i2c,
+	.detect = i2c_nuvoton_detect,
+	.class = I2C_CLASS_ANY,
 	.driver = {
 		.name = I2C_DRIVER_NAME,
 		.owner = THIS_MODULE,
 		.pm = &i2c_nuvoton_pm_ops,
+#ifdef CONFIG_OF
 		.of_match_table = of_match_ptr(i2c_nuvoton_of_match),
+#endif
 	},
 };
 
