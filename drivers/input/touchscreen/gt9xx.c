@@ -56,10 +56,18 @@ struct gt9xx_ts {
 	u16 max_y;
 
 	DECLARE_BITMAP(status, GT9XX_STATUS_BITS);
+
+	unsigned int esd_timeout;
+	struct delayed_work esd_work;
 };
+
+#define GT9XX_DEFAULT_ESD_TIMEOUT_MS	2000
 
 /* Registers define */
 #define GT9XX_REG_CMD			0x8040
+#define GT9XX_CMD_ESD_ENABLED		0xAA
+#define GT9XX_REG_ESD_CHECK		0x8041
+
 #define GT9XX_REG_CONFIG		0x8047
 #define GT9XX_REG_ID			0x8140
 #define GT9XX_REG_STATUS		0x814E
@@ -142,6 +150,22 @@ static void gt9xx_irq_enable(struct gt9xx_ts *ts)
 {
 	gpiod_lock_as_irq(ts->gpiod_int);
 	enable_irq(ts->client->irq);
+}
+
+static int gt9xx_enable_esd(struct gt9xx_ts *ts)
+{
+	int ret;
+
+	ret = gt9xx_i2c_write_u8(ts->client, GT9XX_REG_ESD_CHECK,
+				  GT9XX_CMD_ESD_ENABLED);
+	if (ret) {
+		dev_err(&ts->client->dev, "Failed to enable ESD: %d\n", ret);
+		return ret;
+	}
+
+	schedule_delayed_work(&ts->esd_work, round_jiffies_relative(
+			      msecs_to_jiffies(ts->esd_timeout)));
+	return 0;
 }
 
 static void gt9xx_send_cfg(struct gt9xx_ts *ts)
@@ -381,6 +405,46 @@ static void gt9xx_reset(struct gt9xx_ts *ts)
 	gt9xx_int_sync(ts);
 }
 
+static void gt9xx_esd_work(struct work_struct *work)
+{
+	struct gt9xx_ts *ts = container_of(work, struct gt9xx_ts,
+					   esd_work.work);
+	int retries = 3, ret;
+	u8 esd_data[2];
+
+	while (--retries) {
+		ret = gt9xx_i2c_read(ts->client, GT9XX_REG_CMD, esd_data,
+				      sizeof(esd_data));
+		if (ret)
+			continue;
+
+		if (esd_data[0] != GT9XX_CMD_ESD_ENABLED &&
+		    esd_data[1] == GT9XX_CMD_ESD_ENABLED) {
+			/* feed the watchdog */
+			gt9xx_i2c_write_u8(ts->client,
+					   GT9XX_REG_CMD,
+					   GT9XX_CMD_ESD_ENABLED);
+			break;
+		}
+	}
+
+	if (!retries) {
+		dev_info(&ts->client->dev, "Perfoming ESD recovery.\n");
+		gt9xx_irq_disable(ts, false);
+		gt9xx_reset(ts);
+		gt9xx_send_cfg(ts);
+		gt9xx_irq_enable(ts);
+		ret = gt9xx_enable_esd(ts);
+		if (ret)
+			goto reschedule;
+		return;
+	}
+
+reschedule:
+	schedule_delayed_work(&ts->esd_work, round_jiffies_relative(
+			      msecs_to_jiffies(ts->esd_timeout)));
+}
+
 static int gt9xx_acpi_probe(struct gt9xx_ts *ts)
 {
 	struct device *dev = &ts->client->dev;
@@ -438,6 +502,8 @@ static void gt9xx_sleep(struct gt9xx_ts *ts)
 	if (test_and_set_bit(GT9XX_STATUS_SLEEP_BIT, ts->status))
 		return;
 
+	cancel_delayed_work_sync(&ts->esd_work);
+
 	gt9xx_irq_disable(ts, false);
 
 	gpiod_direction_output(ts->gpiod_int, 0);
@@ -477,6 +543,9 @@ static void gt9xx_wakeup(struct gt9xx_ts *ts)
 
 	gt9xx_int_sync(ts);
 	gt9xx_irq_enable(ts);
+	ret = gt9xx_enable_esd(ts);
+	if (ret)
+		return;
 
 	dev_dbg(&ts->client->dev, "woke up");
 }
@@ -517,6 +586,8 @@ static int gt9xx_ts_probe(struct i2c_client *client,
 
 	ts->client = client;
 	i2c_set_clientdata(client, ts);
+	INIT_DELAYED_WORK(&ts->esd_work, gt9xx_esd_work);
+	ts->esd_timeout = GT9XX_DEFAULT_ESD_TIMEOUT_MS;
 
 	ts->input = devm_input_allocate_device(dev);
 	if (!ts->input)
@@ -564,6 +635,10 @@ static int gt9xx_ts_probe(struct i2c_client *client,
 		return -1;
 	}
 
+	ret = gt9xx_enable_esd(ts);
+	if (ret)
+		return ret;
+
 #ifdef CONFIG_PM
 	ret = device_create_file(dev, &dev_attr_power_HAL_suspend);
 	if (ret < 0) {
@@ -588,6 +663,9 @@ static int gt9xx_ts_remove(struct i2c_client *client)
 	device_remove_file(&client->dev, &dev_attr_power_HAL_suspend);
 	unregister_power_hal_suspend_device(&ts->input->dev);
 #endif
+
+	cancel_delayed_work_sync(&ts->esd_work);
+
 	i2c_set_clientdata(client, NULL);
 	gpiod_direction_input(ts->gpiod_int);
 	input_unregister_device(ts->input);
