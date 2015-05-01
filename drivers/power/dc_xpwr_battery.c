@@ -159,11 +159,31 @@
 #define FG_LOW_CAP_SHDN_THR		0	/* 0 perc */
 
 #define DC_FG_TUNING_CNTL0		0xE8
+#define DC_FG_TUNING_CNTL0_MASK		0x07
+#define DC_FG_TUNING_CNTL0_DEF		0x00
+
 #define DC_FG_TUNING_CNTL1		0xE9
+#define DC_FG_TUNING_CNTL1_MASK		0xFF
+#define DC_FG_TUNING_CNTL1_DEF		0x00
+
 #define DC_FG_TUNING_CNTL2		0xEA
+#define DC_FG_TUNING_CNTL2_MASK		0xFF
+#define DC_FG_TUNING_CNTL2_DEF		0x00
+
 #define DC_FG_TUNING_CNTL3		0xEB
+#define DC_FG_TUNING_CNTL3_MASK		0xFF
+#define DC_FG_TUNING_CNTL3_DEF		0x00
+
 #define DC_FG_TUNING_CNTL4		0xEC
+#define DC_FG_TUNING_CNTL4_MASK		0xFF
+#define DC_FG_TUNING_CNTL4_RDC_CALC	(1 << 5)
+#define DC_FG_TUNING_CNTL4_DEF		(DC_FG_TUNING_CNTL4_RDC_CALC)
+
 #define DC_FG_TUNING_CNTL5		0xED
+#define DC_FG_TUNING_CNTL5_MASK		0xFF
+#define DC_FG_TUNING_CNTL5_DEF		0x00
+
+#define DC_FG_TUNING_CNTL_MAX		6
 
 /* Set 3.7V as minimum RDC voltage */
 #define CNTL4_RDC_MIN_VOLT_SET_MASK	(1 << 4)
@@ -436,6 +456,26 @@ static int pmic_fg_reg_clearb(struct pmic_fg_info *info, int reg, u8 mask)
 	}
 	if (ret < 0)
 		dev_err(&info->pdev->dev, "pmic reg set mask err:%d\n", ret);
+	return ret;
+}
+
+static int pmic_fg_reg_update(struct pmic_fg_info *info,
+			      int reg, u8 val, u8 mask)
+{
+	int ret;
+	u8 reg_val;
+
+	ret = pmic_fg_reg_readb(info, reg);
+	if (ret < 0)
+		return ret;
+
+	val &= mask;
+	reg_val = (u8)(ret & mask);
+	if (reg_val != val) {
+		reg_val = (ret & ~mask) | val;
+		ret = pmic_fg_reg_writeb(info, reg, reg_val);
+	}
+
 	return ret;
 }
 
@@ -1295,6 +1335,53 @@ static void pmic_fg_init_psy(struct pmic_fg_info *info)
 	info->status = POWER_SUPPLY_STATUS_DISCHARGING;
 }
 
+static void pmic_fg_update_fg_tuning_controls(struct pmic_fg_info *info)
+{
+	int ret, i;
+	const u8 regs[DC_FG_TUNING_CNTL_MAX][3] = {
+		{
+			DC_FG_TUNING_CNTL0,
+			DC_FG_TUNING_CNTL0_DEF,
+			DC_FG_TUNING_CNTL0_MASK
+		},
+		{
+			DC_FG_TUNING_CNTL1,
+			DC_FG_TUNING_CNTL1_DEF,
+			DC_FG_TUNING_CNTL1_MASK
+		},
+		{
+			DC_FG_TUNING_CNTL2,
+			DC_FG_TUNING_CNTL2_DEF,
+			DC_FG_TUNING_CNTL2_MASK
+		},
+		{
+			DC_FG_TUNING_CNTL3,
+			DC_FG_TUNING_CNTL3_DEF,
+			DC_FG_TUNING_CNTL3_MASK
+		},
+		{
+			DC_FG_TUNING_CNTL4,
+			DC_FG_TUNING_CNTL4_DEF,
+			DC_FG_TUNING_CNTL4_MASK
+		},
+		{
+			DC_FG_TUNING_CNTL5,
+			DC_FG_TUNING_CNTL5_DEF,
+			DC_FG_TUNING_CNTL5_MASK
+		}
+	};
+
+	for (i = 0; i < DC_FG_TUNING_CNTL_MAX; i++) {
+		ret = pmic_fg_reg_update(info,
+					 regs[i][0],
+					 regs[i][1],
+					 regs[i][2]);
+		if (ret < 0)
+			dev_err(&info->pdev->dev,
+				"cannot update fg tuning control %d\n", i);
+	}
+}
+
 static int pmic_fg_probe(struct platform_device *pdev)
 {
 	struct pmic_fg_info *info;
@@ -1335,6 +1422,9 @@ static int pmic_fg_probe(struct platform_device *pdev)
 	pmic_fg_init_irq(info);
 	pmic_fg_init_hw_regs(info);
 	schedule_delayed_work(&info->status_monitor, STATUS_MON_DELAY_JIFFIES);
+
+	pmic_fg_update_fg_tuning_controls(info);
+
 	return 0;
 }
 
