@@ -1082,6 +1082,8 @@ static const struct dev_pm_ops bmc150_magn_pm_ops = {
 
 static const struct acpi_device_id bmc150_magn_acpi_match[] = {
 	{"BMC150B", 0},
+	{"BMM0050", 0},
+	{"BSBM0150", 0},
 	{},
 };
 MODULE_DEVICE_TABLE(acpi, bmc150_magn_acpi_match);
