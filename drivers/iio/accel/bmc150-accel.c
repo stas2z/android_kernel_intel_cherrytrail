@@ -847,17 +847,6 @@ static int bmc150_accel_write_event_config(struct iio_dev *indio_dev,
 	return 0;
 }
 
-static int bmc150_accel_validate_trigger(struct iio_dev *indio_dev,
-				   struct iio_trigger *trig)
-{
-	struct bmc150_accel_data *data = iio_priv(indio_dev);
-
-	if (data->dready_trig != trig && data->motion_trig != trig)
-		return -EINVAL;
-
-	return 0;
-}
-
 static IIO_CONST_ATTR_SAMP_FREQ_AVAIL(
 		"15.620000 31.260000 62.50000 125 250 500 1000 2000");
 
@@ -993,7 +982,6 @@ static const struct iio_info bmc150_accel_info = {
 	.write_event_value	= bmc150_accel_write_event,
 	.write_event_config	= bmc150_accel_write_event_config,
 	.read_event_config	= bmc150_accel_read_event_config,
-	.validate_trigger	= bmc150_accel_validate_trigger,
 	.driver_module		= THIS_MODULE,
 };
 
@@ -1095,6 +1083,28 @@ static const struct iio_trigger_ops bmc150_accel_trigger_ops = {
 	.try_reenable = bmc150_accel_trig_try_reen,
 	.owner = THIS_MODULE,
 };
+
+static int bmc150_accel_buffer_preenable(struct iio_dev *indio_dev)
+{
+	struct bmc150_accel_data *data = iio_priv(indio_dev);
+
+	return bmc150_accel_set_power_state(data, true);
+}
+
+static int bmc150_accel_buffer_postdisable(struct iio_dev *indio_dev)
+{
+	struct bmc150_accel_data *data = iio_priv(indio_dev);
+
+	return bmc150_accel_set_power_state(data, false);
+}
+
+static const struct iio_buffer_setup_ops bmc150_accel_buffer_setup_ops = {
+	.preenable = bmc150_accel_buffer_preenable,
+	.postenable = iio_triggered_buffer_postenable,
+	.postdisable = bmc150_accel_buffer_postdisable,
+	.predisable = iio_triggered_buffer_predisable,
+};
+
 
 static irqreturn_t bmc150_accel_event_handler(int irq, void *private)
 {
@@ -1303,16 +1313,16 @@ static int bmc150_accel_probe(struct i2c_client *client,
 			data->motion_trig = NULL;
 			goto err_trigger_unregister;
 		}
+	}
 
-		ret = iio_triggered_buffer_setup(indio_dev,
-						 &iio_pollfunc_store_time,
-						 bmc150_accel_trigger_handler,
-						 NULL);
-		if (ret < 0) {
-			dev_err(&client->dev,
-				"Failed: iio triggered buffer setup\n");
-			goto err_trigger_unregister;
-		}
+	ret = iio_triggered_buffer_setup(indio_dev,
+					 &iio_pollfunc_store_time,
+					 bmc150_accel_trigger_handler,
+					 &bmc150_accel_buffer_setup_ops);
+	if (ret < 0) {
+		dev_err(&client->dev,
+			"Failed: iio triggered buffer setup\n");
+		goto err_trigger_unregister;
 	}
 
 	ret = iio_device_register(indio_dev);
@@ -1335,8 +1345,7 @@ static int bmc150_accel_probe(struct i2c_client *client,
 err_iio_unregister:
 	iio_device_unregister(indio_dev);
 err_buffer_cleanup:
-	if (data->dready_trig)
-		iio_triggered_buffer_cleanup(indio_dev);
+	iio_triggered_buffer_cleanup(indio_dev);
 err_trigger_unregister:
 	if (data->dready_trig)
 		iio_trigger_unregister(data->dready_trig);
@@ -1357,8 +1366,9 @@ static int bmc150_accel_remove(struct i2c_client *client)
 
 	iio_device_unregister(indio_dev);
 
+	iio_triggered_buffer_cleanup(indio_dev);
+
 	if (data->dready_trig) {
-		iio_triggered_buffer_cleanup(indio_dev);
 		iio_trigger_unregister(data->dready_trig);
 		iio_trigger_unregister(data->motion_trig);
 	}
