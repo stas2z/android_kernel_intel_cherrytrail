@@ -8357,6 +8357,10 @@ void program_pfi_credits(struct drm_i915_private *dev_priv, bool flag)
 	int cd_clk, cz_clk;
 	int val = VGA_FAST_MODE_DISABLE | FORCE_CREDIT_RESEND;
 
+	/* PFI credits need to be programmed only for VLV/CHV */
+	if (!IS_VALLEYVIEW(dev_priv->dev))
+		return;
+
 	if (!flag) {
 		I915_WRITE(GCI_CONTROL, VGA_FAST_MODE_DISABLE);
 		return;
@@ -8367,7 +8371,7 @@ void program_pfi_credits(struct drm_i915_private *dev_priv, bool flag)
 	if (cd_clk > cz_clk) {
 		if (IS_CHERRYVIEW(dev_priv->dev))
 			val |= PFI_CREDITS_63;
-		else if (IS_VALLEYVIEW(dev_priv->dev))
+		else
 			val |= PFI_CREDITS_15;
 		/* Disable before enabling */
 		I915_WRITE(GCI_CONTROL, VGA_FAST_MODE_DISABLE);
@@ -8375,19 +8379,19 @@ void program_pfi_credits(struct drm_i915_private *dev_priv, bool flag)
 	} else if (cd_clk == cz_clk) {
 		if (IS_CHERRYVIEW(dev_priv->dev))
 			val |= PFI_CREDITS_63;
-		else if (IS_VALLEYVIEW(dev_priv->dev))
+		else
 			val |= PFI_CREDITS_11;
 
 		I915_WRITE(GCI_CONTROL, val);
 	} else {
-		if (IS_CHERRYVIEW(dev_priv->dev)) {
+		if (IS_CHERRYVIEW(dev_priv->dev))
 			val |= PFI_CREDITS_12;
+		else
+			val |= PFI_CREDITS_8;
 
-			/* Disable before enabling */
-			I915_WRITE(GCI_CONTROL, VGA_FAST_MODE_DISABLE);
-			I915_WRITE(GCI_CONTROL, val);
-		} else
-			DRM_ERROR("cd clk < cz clk");
+		/* Disable before enabling */
+		I915_WRITE(GCI_CONTROL, VGA_FAST_MODE_DISABLE);
+		I915_WRITE(GCI_CONTROL, val);
 	}
 }
 
