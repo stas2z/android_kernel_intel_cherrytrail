@@ -10907,6 +10907,17 @@ int intel_set_disp_calc_flip(struct drm_mode_set_display *disp,
 
 				/* None of the above mode, then pfit is disabled */
 				pfit_control &= ~PFIT_ENABLE;
+
+				/*
+				 * Disabling the Panel fitter when it is in
+				 * auto scale mode, causes the display pipe to
+				 * hang. moving to reserved mode, to avoid all
+				 * zero in panel fitter control register.
+				 */
+				if ((pfit_control & PFIT_SCALING_MASK) ==
+						PFIT_SCALING_AUTO)
+					pfit_control |= PFIT_SCALING_RESERVED;
+
 				intel_crtc->scaling_src_size =
 						(((mode->hdisplay - 1) << 16) |
 							(mode->vdisplay - 1));

@@ -3165,6 +3165,8 @@ enum punit_power_well {
 #define   PFIT_SCALING_PROGRAMMED (1 << 26)
 #define   PFIT_SCALING_PILLAR	(2 << 26)
 #define   PFIT_SCALING_LETTER	(3 << 26)
+#define   PFIT_SCALING_RESERVED	(4 << 26)
+#define   PFIT_SCALING_MASK	(7 << 26)
 #define	MASK_PFIT_SCALING_MODE	(0xe3ffffff)
 #define	PFIT_PGM_RATIOS	(dev_priv->info.display_mmio_offset + 0x61234)
 #define	PFIT_SIZE_LIMIT	2000
