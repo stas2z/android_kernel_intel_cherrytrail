@@ -18,9 +18,3 @@ Date:		May 2015
 KernelVersion:	4.2
 Description:
 		High resolution timer instance.
-
-What:		/config/iio/triggers/hrtimer-name/sampling_frequency
-Date:		May 2015
-KernelVersion:	4.2
-Description:
-		Sampling frequency for this hrtimer instance.

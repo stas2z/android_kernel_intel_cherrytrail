@@ -54,10 +54,5 @@ Each trigger can have one or more attributes specific to the trigger type.
 
 3.2 "hrtimer" trigger types attributes
 
-"hrtimer" trigger type has only one attribute:
-
-$ ls /config/triggers/hrtimer-instance1
-sampling_frequency
-
-sampling_frequency - represents the period in Hz between two consecutive
-iio_trigger_poll calls. By default it is set to 100Hz.
+"hrtimer" trigger type doesn't have any configurable attribute from /config dir.
+It does introduce the sampling_frequency attribute to trigger directory.
