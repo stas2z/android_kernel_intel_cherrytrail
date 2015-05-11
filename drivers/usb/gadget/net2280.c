@@ -211,6 +211,7 @@ net2280_enable(struct usb_ep *_ep, const struct usb_endpoint_descriptor *desc)
 		tmp = readl(&ep->cfg->ep_cfg);
 		/* If USB ep number doesn't match hardware ep number */
 		if ((tmp & 0xf) != usb_endpoint_num(desc)) {
+			spin_unlock_irqrestore(&dev->lock, flags);
 			ret = -EINVAL;
 			goto print_err;
 		}
