@@ -33,7 +33,7 @@
 #include <linux/power_hal_sysfs.h>
 #endif
 
-#define GT9XX_MAX_TOUCHES		5
+#define GT9XX_MAX_TOUCHES		10
 #define GT9XX_REG_CONFIG_DATA		0x8047
 #define GT9XX_CONFIG_LENGTH		186
 
