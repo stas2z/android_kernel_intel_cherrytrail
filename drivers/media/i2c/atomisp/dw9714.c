@@ -174,7 +174,7 @@ static int dw9714_t_focus_abs(struct v4l2_subdev *sd, s32 value,
 	int ret;
 
 	value = min(value, DW9714_MAX_FOCUS_POS);
-	ret = dw9714_t_focus_vcm(sd, DW9714_MAX_FOCUS_POS - value, dev);
+	ret = dw9714_t_focus_vcm(sd, value, dev);
 	if (!ret) {
 		dev->number_of_steps = value - dev->focus;
 		dev->focus = value;
@@ -254,7 +254,7 @@ struct dw9714_control dw9714_controls[] = {
 			.minimum = 0,
 			.maximum = DW9714_MAX_FOCUS_POS,
 			.step = 1,
-			.default_value = DW9714_MAX_FOCUS_POS,
+			.default_value = 0,
 			.flags = 0,
 		},
 		.tweak = dw9714_t_focus_abs,
