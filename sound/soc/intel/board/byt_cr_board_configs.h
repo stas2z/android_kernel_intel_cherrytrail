@@ -60,6 +60,7 @@ enum board_id_rt5640 {
 	RT5640_MALATA_A82I,
 	RT5640_MALATA_A8LOW,
 	RT5640_MALATA_A10,
+	RT5640_MALATA_A105i,
 	RT5640_CHIPHD,
 };
 
@@ -167,6 +168,14 @@ static const struct dmi_system_id dmi_system_ids0[] = {
 		.matches = {
 			DMI_MATCH(DMI_BOARD_NAME, "MALATA10"),
 			DMI_MATCH(DMI_BOARD_VERSION, "0"),
+		},
+		.driver_data = (void *)&board_configs0[RT5640_MALATA],
+	},
+	[RT5640_MALATA_A105i] = {
+		.ident = "A105i",
+		.matches = {
+			DMI_MATCH(DMI_BOARD_NAME, "A105i"),
+			DMI_MATCH(DMI_BOARD_VERSION, "1"),
 		},
 		.driver_data = (void *)&board_configs0[RT5640_MALATA],
 	},
