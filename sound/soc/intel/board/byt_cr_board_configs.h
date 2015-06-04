@@ -151,7 +151,7 @@ static const struct dmi_system_id dmi_system_ids0[] = {
 		.ident = "A82i",
 		.matches = {
 			DMI_MATCH(DMI_BOARD_NAME, "A82i"),
-			DMI_MATCH(DMI_BOARD_VERSION, "1"),
+			DMI_MATCH(DMI_BOARD_VERSION, "2"),
 		},
 		.driver_data = (void *)&board_configs0[RT5640_MALATA],
 	},
