@@ -2096,7 +2096,8 @@ static int bq24192_probe(struct i2c_client *client,
 	const struct acpi_device_id *acpi_id;
 	struct i2c_adapter *adapter = to_i2c_adapter(client->dev.parent);
 	struct bq24192_chip *chip;
-	struct device *dev;
+	/* Coverity CID 298068 - initialize dev */
+	struct device *dev = &client->dev;
 	struct gpio_desc *gpio;
 	int ret, reg_status;
 
@@ -2118,7 +2119,6 @@ static int bq24192_probe(struct i2c_client *client,
 		chip->pdata = (struct bq24192_platform_data *)id->driver_data;
 	} else {
 #ifdef CONFIG_ACPI
-		dev = &client->dev;
 		if (!ACPI_HANDLE(dev)) {
 			i2c_set_clientdata(client, NULL);
 			kfree(chip);

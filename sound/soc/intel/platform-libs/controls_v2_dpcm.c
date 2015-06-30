@@ -152,7 +152,8 @@ int sst_byte_control_get(struct snd_kcontrol *kcontrol,
 	struct sst_data *sst = snd_soc_platform_get_drvdata(platform);
 
 	pr_debug("in %s\n", __func__);
-	memcpy(ucontrol->value.bytes.data, sst->byte_stream, SST_MAX_BIN_BYTES);
+	/* Coverity CID 297838/298001 - limit memcpy to sizeof(destination)) */
+	memcpy(ucontrol->value.bytes.data, sst->byte_stream, sizeof(ucontrol->value.bytes.data));
 	print_hex_dump_bytes(__func__, DUMP_PREFIX_OFFSET,
 			     (const void *)sst->byte_stream, 32);
 	return 0;
@@ -192,7 +193,8 @@ int sst_byte_control_set(struct snd_kcontrol *kcontrol,
 
 	pr_debug("in %s\n", __func__);
 	mutex_lock(&sst->lock);
-	memcpy(sst->byte_stream, ucontrol->value.bytes.data, SST_MAX_BIN_BYTES);
+	/* Coverity CID 298002 - limit memcpy() to sizeof(src) */
+	memcpy(sst->byte_stream, ucontrol->value.bytes.data, sizeof(ucontrol->value.bytes.data));
 	if (0 != sst_check_binary_input(sst->byte_stream)) {
 		mutex_unlock(&sst->lock);
 		return -EINVAL;

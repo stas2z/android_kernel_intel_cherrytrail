@@ -769,7 +769,8 @@ static inline void check_unthrottle(struct tty_struct *tty)
 static int send_d0_dx_packet(void)
 {
 	int len;
-	int ret;
+	/* Coverity CID 298090 - initialize variable */
+	int ret = 0;
 	pr_debug("-> %s\n", __func__);
 
 

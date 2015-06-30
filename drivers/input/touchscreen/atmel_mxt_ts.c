@@ -3725,7 +3725,8 @@ err:
 		"%s: Creating debugfs entries failed !\n",
 		data->debugfs_name);
 	mxt_debugfs_remove(data);
-	kfree(data->buf_raw_data);
+	/* Coverity CID 298093 - mxt_debufgs_remove frees buf_raw_data field */
+	/*	kfree(data->buf_raw_data); */
 	return -ENOMEM;
 }
 #endif /*CONFIG_DEBUG_FS*/
