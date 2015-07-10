@@ -13089,7 +13089,6 @@ static void intel_setup_outputs(struct drm_device *dev)
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	struct intel_encoder *encoder;
 	bool dpd_is_edp = false;
-	int i;
 
 	intel_lvds_init(dev);
 
@@ -13142,26 +13141,9 @@ static void intel_setup_outputs(struct drm_device *dev)
 
 		if (I915_READ(PCH_DP_D) & DP_DETECTED)
 			intel_dp_init(dev, PCH_DP_D, PORT_D);
-	} else if (IS_CHERRYVIEW(dev)) {
+	} else if (IS_CHERRYVIEW(dev) || IS_VALLEYVIEW(dev)) {
 		intel_setup_outputs_vbt(dev);
 
-	} else if (IS_VALLEYVIEW(dev)) {
-		/* There is no detection method for MIPI so rely on VBT */
-		if (dev_priv->vbt.has_mipi)
-			intel_dsi_init(dev);
-		else if (I915_READ(VLV_DISPLAY_BASE + DP_C) & DP_DETECTED)
-			intel_dp_init(dev, VLV_DISPLAY_BASE + DP_C, PORT_C);
-		/* Check if HDMI available on device via VBT */
-		for (i = 0; i < dev_priv->vbt.child_dev_num; i++) {
-			if (dev_priv->vbt.child_dev[i].common.device_type ==
-					DEVICE_TYPE_HDMI) {
-				if (I915_READ(VLV_DISPLAY_BASE + GEN4_HDMIB) &
-						SDVO_DETECTED)
-					intel_hdmi_init(dev,
-						VLV_DISPLAY_BASE +
-							GEN4_HDMIB, PORT_B);
-			}
-		}
 	} else if (SUPPORTS_DIGITAL_OUTPUTS(dev)) {
 		bool found = false;
 
