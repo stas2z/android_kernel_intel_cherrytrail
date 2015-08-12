@@ -13016,15 +13016,10 @@ const char *intel_output_name(int output)
 
 static bool intel_crt_present(struct drm_device *dev)
 {
-	struct drm_i915_private *dev_priv = dev->dev_private;
-
 	if (IS_ULT(dev))
 		return false;
 
 	if (IS_CHERRYVIEW(dev))
-		return false;
-
-	if (IS_VALLEYVIEW(dev) && !dev_priv->vbt.int_crt_support)
 		return false;
 
 	return true;
