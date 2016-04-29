@@ -5423,11 +5423,7 @@ int valleyview_cur_cdclk(struct drm_i915_private *dev_priv)
 static int valleyview_calc_cdclk(struct drm_i915_private *dev_priv,
 				 int max_pixclk)
 {
-	struct drm_device *dev = dev_priv->dev;
-	struct drm_crtc *crtc;
-	struct intel_encoder *encoder;
 	int new_cdclk;
-
 	/*
 	 * Really only a few cases to deal with, as only 4 CDclks are supported:
 	 *   200MHz
@@ -5437,50 +5433,14 @@ static int valleyview_calc_cdclk(struct drm_i915_private *dev_priv,
 	 * So we check to see whether we're above 90% of the lower bin and
 	 * adjust if needed.
 	 */
-	if (max_pixclk > 288000 && !IS_CHERRYVIEW(dev))
+	if (max_pixclk > 288000 && !IS_CHERRYVIEW(dev_priv->dev))
 		new_cdclk = 400;
 	else if (max_pixclk > 240000)
 		new_cdclk = 320;
-	else {
+	else
 		new_cdclk = 266;
-		/*
-		 * Looks like the 200MHz CDclk freq doesn't work on some configs
-		 * hence minimum is 266 programmed above.
-		 *
-		 * Also, running on 4 lanes, at HBR link rate and enabling audio
-		 * results in blankout of the display at 266MHz hence
-		 * use 320 MHz always if DP that has audio support is enabled.
-		 */
-		for_each_crtc(dev, crtc) {
-			if (!to_intel_crtc(crtc)->new_enabled)
-				continue;
+	/* Looks like the 200MHz CDclk freq doesn't work on some configs */
 
-			/*
-			 * we have not linked CRTC, encoder & connector yet
-			 * (too early in the mode set sequence for that)
-			 * so we have to manualy check for each encoder
-			 * that is to be associated with our CRTC.
-			 */
-			list_for_each_entry(encoder,
-				&dev->mode_config.encoder_list, base.head) {
-				struct intel_dp *intel_dp;
-
-				if (&encoder->new_crtc->base != crtc)
-					continue;
-
-				if (encoder->type != INTEL_OUTPUT_DISPLAYPORT)
-					continue;
-
-				intel_dp = &(enc_to_dig_port
-							(&encoder->base)->dp);
-
-				if (intel_dp->has_audio) {
-					DRM_DEBUG_KMS("Using 320MHz for DP\n");
-					return 320;
-				}
-			}
-		}
-	}
 	return new_cdclk;
 }
 
@@ -5507,8 +5467,8 @@ static void valleyview_modeset_global_pipes(struct drm_device *dev,
 	struct intel_crtc *intel_crtc;
 	int max_pixclk = intel_mode_max_pixclk(dev_priv);
 
-	dev_priv->req_cdclk_freq = valleyview_calc_cdclk(dev_priv, max_pixclk);
-	if (dev_priv->req_cdclk_freq <= dev_priv->vlv_cdclk_freq)
+	if (valleyview_calc_cdclk(dev_priv, max_pixclk) ==
+	    dev_priv->vlv_cdclk_freq)
 		return;
 
 	/* disable/enable all currently active pipes while we change cdclk */
@@ -5520,9 +5480,10 @@ static void valleyview_modeset_global_pipes(struct drm_device *dev,
 static void valleyview_modeset_global_resources(struct drm_device *dev)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
-	int req_cdclk = dev_priv->req_cdclk_freq;
+	int max_pixclk = intel_mode_max_pixclk(dev_priv);
+	int req_cdclk = valleyview_calc_cdclk(dev_priv, max_pixclk);
 
-	if (dev_priv->vlv_cdclk_freq < dev_priv->req_cdclk_freq) {
+	if (req_cdclk != dev_priv->vlv_cdclk_freq) {
 		if (IS_CHERRYVIEW(dev))
 			cherryview_set_cdclk(dev, req_cdclk);
 		else
@@ -6172,9 +6133,6 @@ void intel_encoder_destroy(struct drm_encoder *encoder)
 static void intel_encoder_dpms(struct intel_encoder *encoder, int mode)
 {
 	struct drm_device *dev = encoder->base.dev;
-	struct drm_i915_private *dev_priv = dev->dev_private;
-	struct drm_crtc *crtc;
-
 	if (mode == DRM_MODE_DPMS_ON) {
 		encoder->connectors_active = true;
 		intel_crtc_update_dpms(encoder->base.crtc);
@@ -6189,24 +6147,6 @@ static void intel_encoder_dpms(struct intel_encoder *encoder, int mode)
 		intel_save_clr_mgr_status(dev);
 
 		intel_crtc_update_dpms(encoder->base.crtc);
-
-		if (!IS_VALLEYVIEW(dev))
-			return;
-
-		for_each_crtc(dev, crtc) {
-			if (!crtc || !to_intel_crtc(crtc))
-				continue;
-			if (to_intel_crtc(crtc)->active)
-				return;
-		}
-
-		/*HACK: force cdclock change by setting current to 0 */
-		if (dev_priv->vlv_cdclk_freq != dev_priv->req_cdclk_freq) {
-			dev_priv->vlv_cdclk_freq = 0;
-			DRM_DEBUG_KMS("Lowering CD clock to %d\n",
-				dev_priv->req_cdclk_freq);
-			valleyview_modeset_global_resources(dev);
-		}
 	}
 }
 
@@ -7268,17 +7208,6 @@ static void i9xx_set_pipeconf(struct intel_crtc *intel_crtc)
 
 	/* only g4x and later have fancy bpc/dither controls */
 	if (IS_G4X(dev) || IS_VALLEYVIEW(dev)) {
-
-		/*
-		 * compliance will fail if dithering is enabled for 6bpc
-		 * hence avoid this. This will not affect normal functioning
-		 * since external DP does not need dithering for 6bpc
-		 */
-		if (intel_pipe_has_type(&intel_crtc->base,
-				INTEL_OUTPUT_DISPLAYPORT) &&
-				intel_crtc->config.pipe_bpp < 24)
-			intel_crtc->config.dither = false;
-
 		/* Bspec claims that we can't use dithering for 30bpp pipes. */
 		if (intel_crtc->config.dither && intel_crtc->config.pipe_bpp != 30)
 			pipeconf |= PIPECONF_DITHER_EN |
@@ -12285,8 +12214,7 @@ intel_pipe_config_compare(struct drm_device *dev,
 	    IS_VALLEYVIEW(dev))
 		PIPE_CONF_CHECK_I(limited_color_range);
 
-	if (!IS_VALLEYVIEW(dev))
-		PIPE_CONF_CHECK_I(has_audio);
+	PIPE_CONF_CHECK_I(has_audio);
 
 	PIPE_CONF_CHECK_FLAGS(adjusted_mode.flags,
 			      DRM_MODE_FLAG_INTERLACE);
@@ -12705,7 +12633,6 @@ static int __intel_set_mode(struct drm_crtc *crtc,
 
 	*saved_mode = crtc->mode;
 
-	intel_update_maxfifo(dev_priv, crtc, false);
 	/* Hack: Because we don't (yet) support global modeset on multiple
 	 * crtcs, we don't keep track of the new mode for more than one crtc.
 	 * Hence simply check whether any bit is set in modeset_pipes in all the
@@ -15302,9 +15229,6 @@ bool chv_upfront_link_train(struct drm_device *dev,
 		if (intel_crtc_active(&crtc->base))
 			continue;
 
-		if (intel_pipe_has_type(&crtc->base, INTEL_OUTPUT_DSI))
-			continue;
-
 		connector->new_encoder = encoder;
 		encoder->new_crtc = crtc;
 		encoder->base.crtc = &crtc->base;
@@ -15341,6 +15265,9 @@ start_link_train:
 		/* Find port clock from link_bw */
 		crtc->config.port_clock =
 				drm_dp_bw_code_to_link_rate(intel_dp->link_bw);
+
+		crtc->config.pixel_multiplier = intel_dp_calc_multiplier(
+						encoder, intel_dp->link_bw);
 
 		/* Enable PLL followed by port */
 		intel_dp_set_clock(encoder, &crtc->config, intel_dp->link_bw);

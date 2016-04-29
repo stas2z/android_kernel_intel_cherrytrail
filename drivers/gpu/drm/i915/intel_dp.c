@@ -162,8 +162,8 @@ int intel_dp_max_link_bw(struct intel_dp *intel_dp)
 			max_link_bw = DP_LINK_BW_2_7;
 		break;
 	default:
-		DRM_DEBUG_KMS("Unsupported Max Link bw:%x, using 1.62Gbps\n",
-				max_link_bw);
+		WARN(1, "invalid max DP link bw val %x, using 1.62Gbps\n",
+		     max_link_bw);
 		max_link_bw = DP_LINK_BW_1_62;
 		break;
 	}
@@ -643,69 +643,6 @@ static uint32_t i9xx_get_aux_send_ctl(struct intel_dp *intel_dp,
 	       (aux_clock_divider << DP_AUX_CH_CTL_BIT_CLOCK_2X_SHIFT);
 }
 
-/*
- * This funcion brings together the assumptions(hack) about
- * combinations of displays possible in CHT to find the
- * current pipe. this is required since our power domain
- * logic works on pipe id and during our detection we do
- * not have any pipe associated with the current encoder
- * or connector. so this is the only way to handle this
- * as of now. The proper fix is to move the get/put
- * calls to power domain to the caller and let them
- * worry about the power domain. but that has to be done
- * another day as any such change is not going to be
- * simple fix.
- */
-static enum pipe cht_find_pipe(struct intel_dp *intel_dp)
-{
-	struct intel_digital_port *intel_dig_port = dp_to_dig_port(intel_dp);
-	struct drm_device *dev = intel_dig_port->base.base.dev;
-	struct drm_i915_private *dev_priv = dev->dev_private;
-	struct intel_encoder *intel_encoder;
-
-	if (intel_dig_port->port == PORT_D)
-		return PIPE_C;
-
-	if (is_edp(intel_dp))
-		return PIPE_B;
-
-	/*
-	 * since we have handled edp above, reaching here means
-	 * we have an external DP, hence use the logic below
-	 */
-	list_for_each_entry(intel_encoder, &dev->
-			mode_config.encoder_list, base.head) {
-
-		/*
-		 * MIPI always comes on Pipe A or Pipe B
-		 * depending on Port A or Port C and EDP
-		 * comes on Pipe B. So the other pipe
-		 * will only be able to drive the DP.
-		 * MIPI on Port A is driven by Pipe A
-		 * and MIPI on Port C is driven by
-		 * Pipe B. So the other pipe will
-		 * drive DP.
-		 */
-
-		if (intel_encoder->type == INTEL_OUTPUT_EDP) {
-			return PIPE_A;
-		} else if (intel_encoder->type == INTEL_OUTPUT_DSI &&
-				dev_priv->vbt.dsi.port == DVO_PORT_MIPIA) {
-			return PIPE_B;
-		} else if (intel_encoder->type == INTEL_OUTPUT_DSI &&
-				dev_priv->vbt.dsi.port == DVO_PORT_MIPIC) {
-			return PIPE_A;
-		}
-	}
-
-	/*
-	 * if none of the above conditions are hit
-	 * it means we are in a system without LFP
-	 * just taking a guess and sending A
-	 */
-	return PIPE_A;
-}
-
 static int
 intel_dp_aux_ch(struct intel_dp *intel_dp,
 		uint8_t *send, int send_bytes,
@@ -722,27 +659,27 @@ intel_dp_aux_ch(struct intel_dp *intel_dp,
 	int try, clock = 0;
 	bool has_aux_irq = HAS_AUX_IRQ(dev) && !IS_VALLEYVIEW(dev);
 	bool vdd = false;
-	enum pipe pipe;
 
 	/* If we already have panel power, do not call _vdd_on */
 	if (is_edp(intel_dp) && !edp_have_panel_power(intel_dp))
 		vdd = _edp_panel_vdd_on(intel_dp);
 
+	/* dp aux is extremely sensitive to irq latency, hence request the
+	 * lowest possible wakeup latency and so prevent the cpu from going into
+	 * deep sleep states.
+	 */
+	pm_qos_update_request(&dev_priv->pm_qos, 0);
+
 	intel_dp_check_edp(intel_dp);
 
-	if (IS_CHERRYVIEW(dev))
-		pipe = cht_find_pipe(intel_dp);
-	else
-		pipe = PIPE_A;
-
-	intel_display_power_get(dev_priv, pipe);
+	intel_display_power_get(dev_priv, PIPE_A);
 
 	/* Try to wait for any previous AUX channel activity */
 	for (try = 0; try < 3; try++) {
 		status = I915_READ_NOTRACE(ch_ctl);
 		if ((status & DP_AUX_CH_CTL_SEND_BUSY) == 0)
 			break;
-		usleep_range(1000, 1100);
+		msleep(1);
 	}
 
 	if (try == 3) {
@@ -837,7 +774,8 @@ intel_dp_aux_ch(struct intel_dp *intel_dp,
 
 	ret = recv_bytes;
 out:
-	intel_display_power_put(dev_priv, pipe);
+	pm_qos_update_request(&dev_priv->pm_qos, PM_QOS_DEFAULT_VALUE);
+	intel_display_power_put(dev_priv, PIPE_A);
 
 	if (vdd)
 		edp_panel_vdd_off(intel_dp, false);
@@ -1025,6 +963,27 @@ intel_dp_set_m2_n2(struct intel_crtc *crtc, struct intel_link_m_n *m_n)
 	I915_WRITE(PIPE_LINK_N2(transcoder), m_n->link_n);
 }
 
+uint8_t intel_dp_calc_multiplier(struct intel_encoder *encoder,
+			u32 link_rate)
+{
+	struct drm_device *dev = encoder->base.dev;
+	uint8_t multiplier = 1;
+
+	if (!IS_VALLEYVIEW(dev))
+		return multiplier;
+
+	/*
+	 * CHV/VLV supports only HBR and LBR,
+	 * so use precalculated values
+	 */
+	if (link_rate == DP_LINK_BW_2_7)
+		multiplier = 4;
+	else if (link_rate != DP_LINK_BW_1_62)
+		DRM_ERROR("Invalid link rate used\n");
+
+	return multiplier;
+}
+
 bool
 intel_dp_compute_config(struct intel_encoder *encoder,
 			struct intel_crtc_config *pipe_config)
@@ -1115,8 +1074,8 @@ intel_dp_compute_config(struct intel_encoder *encoder,
 			DRM_DEBUG_KMS("using min %02x link bw per VBT\n",
 				      bws[min_clock]);
 		}
-	} else
-		min_lane_count = max_lane_count;
+	}
+
 	/*
 	 * Walk through all bpp values. Luckily they're all nicely spaced with 2
 	 * bpc in between.
@@ -1155,16 +1114,25 @@ found:
 	if (intel_dp->color_range)
 		pipe_config->limited_color_range = true;
 
+	/*
+	 * compliance tests expect same lane count as reported, so
+	 * avoid any optimization during tests
+	 */
+	if (intel_dp->compliance_test_type == DP_TEST_LINK_TRAINING)
+		lane_count = max_lane_count;
+
 	intel_dp->link_bw = bws[clock];
 	intel_dp->lane_count = lane_count;
 	pipe_config->pipe_bpp = bpp;
 	pipe_config->port_clock = drm_dp_bw_code_to_link_rate(intel_dp->link_bw);
+	pipe_config->pixel_multiplier =
+			intel_dp_calc_multiplier(encoder, bws[clock]);
 
 	DRM_DEBUG_KMS("DP link bw %02x lane count %d clock %d bpp %d\n",
 		      intel_dp->link_bw, intel_dp->lane_count,
 		      pipe_config->port_clock, bpp);
-	DRM_DEBUG_KMS("DP link bw required %i available %i\n",
-		      mode_rate, link_avail);
+	DRM_DEBUG_KMS("DP link bw required %i available %i and multiplier %d\n",
+		      mode_rate, link_avail, pipe_config->pixel_multiplier);
 
 	intel_link_compute_m_n(bpp, lane_count,
 			       adjusted_mode->crtc_clock,
@@ -1247,15 +1215,9 @@ static void intel_dp_prepare(struct intel_encoder *encoder)
 	intel_dp->DP |= DP_VOLTAGE_0_4 | DP_PRE_EMPHASIS_0;
 	intel_dp->DP |= DP_PORT_WIDTH(intel_dp->lane_count);
 
-	/*
-	 * LP audio driver communicates through i915
-	 * where we enable audio output on port
-	 * hence not needed to be enabled during
-	 * modeset
-	 */
-	if (crtc->config.has_audio && !IS_VALLEYVIEW(dev)) {
+	if (crtc->config.has_audio) {
 		DRM_DEBUG_DRIVER("Enabling DP audio on pipe %c\n",
-				pipe_name(crtc->pipe));
+				 pipe_name(crtc->pipe));
 		intel_dp->DP |= DP_AUDIO_OUTPUT_ENABLE;
 		intel_write_eld(&encoder->base, adjusted_mode);
 	}
@@ -3137,6 +3099,7 @@ static void chv_pre_enable_dp(struct intel_encoder *encoder)
 	if (is_edp(intel_dp))
 		vlv_init_panel_power_sequencer(intel_dp);
 
+	intel_dp->allow_dpcd = true;
 	intel_enable_dp(encoder);
 
 	vlv_wait_port_ready(dev_priv, dport);
@@ -4087,7 +4050,6 @@ intel_dp_complete_link_train(struct intel_dp *intel_dp)
 
 	if (channel_eq) {
 		intel_dp->has_fast_link_train = true;
-		intel_dp->allow_dpcd = true;
 		DRM_DEBUG_KMS("Channel EQ done. DP Training successful\n");
 	}
 
@@ -4554,7 +4516,6 @@ intel_dp_check_link_status(struct intel_dp *intel_dp, bool *perform_full_detect)
 	u8 old_sink_count = intel_dp->sink_count;
 	u8 old_lane_count = intel_dp->dpcd[DP_MAX_LANE_COUNT];
 	bool ret;
-	bool check_link = false;
 	uint8_t counter = MAX_SHORT_PULSE_RETRY_COUNT;
 
 	*perform_full_detect = false;
@@ -4562,7 +4523,7 @@ intel_dp_check_link_status(struct intel_dp *intel_dp, bool *perform_full_detect)
 	intel_dp->compliance_test_type = 0;
 	intel_dp->compliance_test_data = 0;
 
-	while (!intel_dp->allow_dpcd && counter-- > 1)
+	while (!intel_dp->allow_dpcd && counter-- > 0)
 		mdelay(10);
 
 	DRM_DEBUG_KMS("\n");
@@ -4586,6 +4547,13 @@ intel_dp_check_link_status(struct intel_dp *intel_dp, bool *perform_full_detect)
 		return;
 	}
 
+	/* FIXME: This access isn't protected by any locks. */
+	if (!intel_encoder->connectors_active)
+		return;
+
+	if (WARN_ON(!intel_encoder->base.crtc))
+		return;
+
 	/* Try to read the source of the interrupt */
 	if (intel_dp->dpcd[DP_DPCD_REV] >= 0x11 &&
 	    intel_dp_get_sink_irq(intel_dp, &sink_irq_vector)) {
@@ -4605,6 +4573,7 @@ intel_dp_check_link_status(struct intel_dp *intel_dp, bool *perform_full_detect)
 		 */
 		if (old_lane_count != intel_dp->dpcd[DP_MAX_LANE_COUNT]) {
 			DRM_DEBUG_KMS("Lane count changed\n");
+			intel_dp_update_simulate_detach_info(intel_dp);
 			*perform_full_detect = true;
 			return;
 		}
@@ -4622,23 +4591,14 @@ intel_dp_check_link_status(struct intel_dp *intel_dp, bool *perform_full_detect)
 		}
 	}
 
-	/* FIXME: This access isn't protected by any locks.
-	 * if link training is requested we should perform it always
-	 */
-	if (intel_dp->compliance_test_type == DP_TEST_LINK_TRAINING) {
-		DRM_DEBUG_KMS("%s: Link training requested, retraining\n",
-				intel_encoder->base.name);
-		check_link = true;
-	} else  if (((intel_encoder->connectors_active) &&
-				(intel_encoder->base.crtc)) &&
-		(!drm_dp_channel_eq_ok(link_status, intel_dp->lane_count))) {
+	/* if link training is requested we should perform it always */
+	if ((intel_dp->compliance_test_type == DP_TEST_LINK_TRAINING) ||
+	    (!drm_dp_channel_eq_ok(link_status, intel_dp->lane_count))) {
 		DRM_DEBUG_KMS("%s: channel EQ not ok, retraining\n",
-				intel_encoder->base.name);
-		check_link = true;
-	}
+			      intel_encoder->base.name);
 
-	if (check_link) {
 		if (IS_CHERRYVIEW(dev)) {
+			intel_dp_update_simulate_detach_info(intel_dp);
 			*perform_full_detect = true;
 		} else {
 			if (intel_dp_start_link_train(intel_dp))
@@ -4873,7 +4833,6 @@ intel_dp_detect(struct drm_connector *connector, bool force)
 		intel_dp->aux.i2c_defer_count = 0;
 
 		intel_dp->has_audio =  false;
-		pm_qos_update_request(&dev_priv->pm_qos, PM_QOS_DEFAULT_VALUE);
 		goto out;
 	}
 
@@ -4883,27 +4842,6 @@ intel_dp_detect(struct drm_connector *connector, bool force)
 	}
 
 	intel_dp_probe_oui(intel_dp);
-
-	/* if simulation was in progress clear the flag & skip upfront */
-	if (dev_priv->simulate_dp_in_progress & intel_encoder->hpd_pin)
-		dev_priv->simulate_dp_in_progress &= ~(intel_encoder->hpd_pin);
-	else if (IS_CHERRYVIEW(dev) &&
-		intel_dp->compliance_test_type != DP_TEST_LINK_TRAINING &&
-			intel_encoder->type == INTEL_OUTPUT_DISPLAYPORT) {
-
-		/*
-		 * TODO: Need to test connected boot scenario once platform
-		 * patches are ready. This path is tested on reworked-RVP only.
-		 */
-		if (intel_encoder->connectors_active &&
-						crtc && crtc->enabled) {
-			intel_crtc = to_intel_crtc(crtc);
-			DRM_DEBUG_KMS("Disabling crtc %c for upfront LT\n",
-					pipe_name(intel_crtc->pipe));
-			intel_crtc_control(crtc, false);
-		}
-		chv_upfront_link_train(dev, intel_dp, intel_crtc);
-	}
 
 	if (intel_dp->force_audio != HDMI_AUDIO_AUTO) {
 		intel_dp->has_audio = (intel_dp->force_audio == HDMI_AUDIO_ON);
@@ -4923,27 +4861,38 @@ intel_dp_detect(struct drm_connector *connector, bool force)
 	/* Try to read the source of the interrupt */
 	if (intel_dp->dpcd[DP_DPCD_REV] >= 0x11 &&
 	    intel_dp_get_sink_irq(intel_dp, &sink_irq_vector)) {
-		if (sink_irq_vector & DP_AUTOMATED_TEST_REQUEST) {
-			intel_dp_handle_test_request(intel_dp, false);
-			sink_irq_vector &= ~DP_AUTOMATED_TEST_REQUEST;
-		}
-		if (sink_irq_vector & (DP_CP_IRQ | DP_SINK_SPECIFIC_IRQ))
-			DRM_DEBUG_DRIVER("CP or sink specific irq unhandled\n");
-
 		/* Clear interrupt source */
 		drm_dp_dpcd_writeb(&intel_dp->aux,
 				   DP_DEVICE_SERVICE_IRQ_VECTOR,
 				   sink_irq_vector);
 
+		if (sink_irq_vector & DP_AUTOMATED_TEST_REQUEST)
+			intel_dp_handle_test_request(intel_dp, false);
+		if (sink_irq_vector & (DP_CP_IRQ | DP_SINK_SPECIFIC_IRQ))
+			DRM_DEBUG_DRIVER("CP or sink specific irq unhandled\n");
 	}
 
+	if (IS_CHERRYVIEW(dev) &&
+		intel_dp->compliance_test_type != DP_TEST_LINK_TRAINING &&
+			intel_encoder->type == INTEL_OUTPUT_DISPLAYPORT) {
 
-	/*
-	 * dp aux is extremely sensitive to irq latency, hence request the
-	 * lowest possible wakeup latency and so prevent the cpu from going into
-	 * deep sleep states.
-	 */
-	pm_qos_update_request(&dev_priv->pm_qos, 0);
+		/*
+		 * TODO: Need to test connected boot scenario once platform
+		 * patches are ready. This path is tested on reworked-RVP only.
+		 */
+		if (intel_encoder->connectors_active &&
+						crtc && crtc->enabled) {
+			intel_crtc = to_intel_crtc(crtc);
+			DRM_DEBUG_KMS("Disabling crtc %c for upfront LT\n",
+					pipe_name(intel_crtc->pipe));
+			intel_crtc_control(crtc, false);
+		}
+		chv_upfront_link_train(dev, intel_dp, intel_crtc);
+	}
+
+	/* if simulation was in progress clear the flag */
+	if (dev_priv->simulate_dp_in_progress & intel_encoder->hpd_pin)
+		dev_priv->simulate_dp_in_progress &= ~(intel_encoder->hpd_pin);
 
 out:
 #ifdef CONFIG_SUPPORT_LPDMA_HDMI_AUDIO
@@ -5244,7 +5193,6 @@ intel_dp_hpd_pulse(struct intel_digital_port *intel_dig_port, bool long_hpd)
 
 	if (full_detect) {
 		DRM_DEBUG_KMS("Forcing full detect for short pulse\n");
-		intel_dp_update_simulate_detach_info(intel_dp);
 		return true;
 	}
 
