@@ -150,6 +150,7 @@ static acpi_status acpi_gpiochip_request_interrupt(struct acpi_resource *ares,
 		return AE_ERROR;
 	}
 
+	if (desc_to_gpio(desc) != 336) {
 	ret = gpiochip_request_own_desc(desc, "ACPI:Event");
 	if (ret) {
 		dev_err(chip->dev, "Failed to request GPIO\n");
@@ -208,6 +209,7 @@ static acpi_status acpi_gpiochip_request_interrupt(struct acpi_resource *ares,
 	}
 
 	list_add_tail(&event->node, &acpi_gpio->events);
+	}
 	return AE_OK;
 
 fail_free_event:
