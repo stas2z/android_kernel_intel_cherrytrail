@@ -1556,6 +1556,12 @@ config SENSORS_MC13783_ADC
         help
           Support for the A/D converter on MC13783 and MC13892 PMIC.
 
+config SENSORS_BMA250
+        bool "BMA250 Acceleration Sensor Driver"
+        depends on I2C
+        help
+         BMA250 Acceleration Sensor Driver implemented by Bosch-Sensortec.
+
 if ACPI
 
 comment "ACPI drivers"
