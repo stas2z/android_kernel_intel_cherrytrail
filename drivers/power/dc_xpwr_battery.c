@@ -181,7 +181,7 @@
 #define STATUS_MON_FULL_DELAY_JIFFIES	(HZ * 30)	/*30sec */
 #define FULL_CAP_THLD			100	/* 100% capacity */
 //#define FULL_CAP_THLD			98	/* 98% capacity */
-#define BATT_DET_CAP_THLD		95	/* 95% capacity */
+#define BATT_DET_CAP_THLD		95
 #define DC_FG_INTR_NUM			6
 
 #define THERM_CURVE_MAX_SAMPLES		18
@@ -697,6 +697,8 @@ static int pmic_fg_battery_health(struct pmic_fg_info *info)
 		health = POWER_SUPPLY_HEALTH_DEAD;
 	else
 		health = POWER_SUPPLY_HEALTH_GOOD;
+	
+	health = POWER_SUPPLY_HEALTH_GOOD;
 
 health_read_fail:
 	return health;
@@ -713,6 +715,7 @@ static int pmic_fg_get_battery_property(struct power_supply *psy,
 	mutex_lock(&info->lock);
 	switch (psp) {
 	case POWER_SUPPLY_PROP_STATUS:
+		//printk("===battery status:%d\n", info->status);
 		val->intval = info->status;
 		break;
 	case POWER_SUPPLY_PROP_HEALTH:
@@ -903,7 +906,7 @@ static void fg_capacity_monitor(struct work_struct *work)
 			pr_info("%s get current failed %d\n", __func__, ret);
 			goto err;
 		}
-		if (cur < 50) {
+		if (cur < 100) {
 			if (f_capacity < r_capacity) {
 				f_capacity = r_capacity;
 			} else  {

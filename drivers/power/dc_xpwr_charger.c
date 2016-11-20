@@ -517,6 +517,7 @@ static int get_charger_health(struct pmic_chrg_info *info)
 		health = POWER_SUPPLY_HEALTH_GOOD;
 		info->is_charger_enabled = 1;
 	}
+	health = POWER_SUPPLY_HEALTH_GOOD;
 health_read_fail:
 	info->chrg_health = health;
 	return health;
@@ -695,6 +696,10 @@ static int pmic_chrg_usb_get_property(struct power_supply *psy,
 			val->intval = 0;
 			break;
 		}
+		ret = pmic_chrg_reg_readb(info, DC_PS_STAT_REG);
+		if (!(ret & PS_STAT_VBUS_PRESENT)) 
+			info->online = 0;
+
 		val->intval = info->online;
 		break;
 	case POWER_SUPPLY_PROP_HEALTH:
@@ -990,6 +995,11 @@ static int pmic_chrg_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
+
+	ret = pmic_chrg_reg_readb(info, VBUS_ISPOUT_VHOLD_SET_MASK);
+	ret &=~(7<<0);
+	pmic_chrg_reg_writeb(info, VBUS_ISPOUT_VHOLD_SET_MASK, ret);
+	
 	info->pdev = pdev;
 	info->pdata = pdev->dev.platform_data;
 	if (!info->pdata)
