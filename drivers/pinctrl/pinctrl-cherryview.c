@@ -724,6 +724,7 @@ struct chv_gpio {
 	char			*community_name;
 	int			print_wakeup;
 };
+struct chv_gpio *g_cg;
 
 static DEFINE_SPINLOCK(chv_reg_access_lock);
 
@@ -787,6 +788,42 @@ static int chv_gpio_request(struct gpio_chip *chip, unsigned offset)
 
 	return 0;
 }
+
+int config_gpio_ctrl0reg(struct gpio_chip *chip,u32 value, unsigned offset)
+{
+	struct chv_gpio *cg = to_chv_priv(chip);
+	void __iomem *reg = chv_gpio_reg(&cg->chip, offset, CV_PADCTRL0_REG);
+	
+	if (cg->pad_info[offset].family < 0)
+	{
+		printk("===config 0 error\n");
+		return -EINVAL;
+	}
+	chv_writel(value, reg);
+	
+	//value = chv_readl(reg);
+	//printk("===ctrl0:0x%x\n", value);
+	return 0;
+}
+EXPORT_SYMBOL_GPL(config_gpio_ctrl0reg);
+
+int config_gpio_ctrl1reg(struct gpio_chip *chip,u32 value, unsigned offset)
+{
+	struct chv_gpio *cg = to_chv_priv(chip);
+	void __iomem *reg = chv_gpio_reg(&cg->chip, offset, CV_PADCTRL1_REG);
+	
+	if (cg->pad_info[offset].family < 0)
+	{
+		printk("===config 1 error\n");
+		return -EINVAL;
+	}
+	chv_writel(value, reg);	
+	
+	//value = chv_readl(reg);
+	//printk("===ctrl1:0x%x\n", value);
+	return 0;
+}
+EXPORT_SYMBOL_GPL(config_gpio_ctrl1reg);
 
 static void chv_gpio_free(struct gpio_chip *chip, unsigned offset)
 {
@@ -1530,8 +1567,9 @@ chv_gpio_pnp_probe(struct pnp_dev *pdev, const struct pnp_device_id *id)
 #endif
 
 	dev_info(dev, "Cherryview GPIO %s probed\n", pdev->name);
-
+	g_cg = cg;
 	dev_set_drvdata(&pdev->dev, cg);
+
 	return 0;
 err:
 	devm_kfree(dev, cg);
