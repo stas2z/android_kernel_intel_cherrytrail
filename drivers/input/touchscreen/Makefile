@@ -82,9 +82,10 @@ obj-$(CONFIG_TOUCHSCREEN_FOCALTECH_FT5X06)	+= ft5x06_ts.o
 
 obj-$(CONFIG_TOUCHSCREEN_SILEAD_GSL1688)	+= gsl1688.o
 obj-$(CONFIG_TOUCHSCREEN_SILEAD_GSL3680)	+= gsl1688.o
-obj-y += gsl_point_id.o
-$(obj)/gsl_point_id.o: $(srctree)/$(obj)/gsl_point_id
-	cp $(srctree)/$(obj)/gsl_point_id $(obj)/gsl_point_id.o
+#obj-y += gsl_point_id.o
+#$(obj)/gsl_point_id.o: $(srctree)/$(obj)/gsl_point_id
+#	cp $(srctree)/$(obj)/gsl_point_id $(obj)/gsl_point_id.o
+obj-$(CONFIG_TOUCHSCREEN_SILEAD) += silead/
 obj-$(CONFIG_CC_TOUCHSCREEN_GT9271) += gt9xx/
 obj-$(CONFIG_CC_TOUCHSCREEN_GT9110) += gt9xx/
 obj-$(CONFIG_CC_TOUCHSCREEN_FT5526) += ftxxxx/
