@@ -1172,6 +1172,13 @@ static acpi_status acpi_i2c_add_device(acpi_handle handle, u32 level,
 	if (acpi_bus_get_status(adev) || !adev->status.present)
 		return AE_OK;
 
+#ifdef CONFIG_CHUWI_HIBOOK
+	if (!strcmp(dev_name(&adev->dev),"OVTI2680:00")) {
+		printk("acpi_i2c_add_device: skipping OVTI2680:00 \n");
+		return AE_OK;
+	}
+#endif
+
 	memset(&info, 0, sizeof(info));
 	info.acpi_node.companion = adev;
 

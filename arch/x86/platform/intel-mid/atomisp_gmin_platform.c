@@ -177,7 +177,11 @@ static struct atomisp_camera_cht_table cht_cam_comp_tab[] = {
 	/* OV5648 */
 	{"i2c-INT5648:00",  "INT5648:00",  "rear",  "i2c-rear:36",  0x36, 0x00},
 	/* OV2680 */
+#ifdef CONFIG_CHUWI_HIBOOK
+	{"i2c-OVTI2680:00", "OVTI2680:00", "front", "i2c-front:10", 0x10, 0x00},
+#else
 	{"i2c-OVTI2680:00", "OVTI2680:00", "front", "i2c-front:36", 0x36, 0x00},
+#endif
 	/* GC2355 */
 	{"i2c-OVTI2680:01", "OVTI2680:01", "front", "i2c-front:10", 0x10, 0x00}
 };
