@@ -38,9 +38,11 @@
 //#include <linux/earlysuspend.h>
 //#include <mach/system.h>
 //#include <mach/hardware.h>
-#ifdef CONFIG_CHUWI_HI10PRO
+#if defined(CONFIG_CHUWI_HI10PRO)
 #include "gslX68X_hi10pro.h"
-#else
+#elif defined(CONFIG_CHUWI_HIBOOK)
+#include "gslX68X_hibook.h"
+#else //CONFIG_CHUWI_VI10PLUS
 #include "gslX68X.h"
 #endif
 //#define	TPD_PROXIMITY		// add ps define

@@ -20,6 +20,10 @@
 #define	FLAG_COOR		(0x0fff0fff)
 #define	FLAG_ID			(0xf0000000)
 
+#ifdef CONFIG_CHUWI_HIBOOK
+#define SCREEN_X_OFFSET         -30
+#endif
+
 struct gsl_touch_info
 {
 	int x[10];
@@ -943,6 +947,9 @@ static unsigned int ScreenResolution(gsl_POINT_TYPE *p)
 			if(ignore_x[1] >= screen_y_max/2 && x > ignore_x[1])
 				return 0;
 		}
+#ifdef CONFIG_CHUWI_HIBOOK
+		x += SCREEN_X_OFFSET;
+#endif
 		if(y <= (int)edge_cut[2])
 			y = (int)edge_cut[2] + 1;
 		if(y >= screen_y_max - (int)edge_cut[3])
