@@ -15,7 +15,11 @@
 #define EM_CONFIG_OEM0_NAME "OEM0"
 #define EM_CONFIG_OEM1_NAME "OEM1"
 
+#ifdef CONFIG_CHUWI_HIBOOK
+#define BATTERY_FULL_VOLTAGE 4350
+#else
 #define BATTERY_FULL_VOLTAGE 4200
+#endif
 #ifdef DEBUG
 static void dump_chrg_profile(const struct ps_pse_mod_prof *chrg_prof);
 #endif

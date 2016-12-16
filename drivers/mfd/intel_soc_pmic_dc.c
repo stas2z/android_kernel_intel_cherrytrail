@@ -38,23 +38,33 @@
 #define GPIO_USB_MUX_INDEX	1
 #define GPIO_OTG_VBUS_INDEX	2
 #define FPO0_USB_COMP_OFFSET	0x01
+#if defined(CONFIG_CHUWI_HI10PRO)
 #define MAX_CV 		 4200
-#ifdef CONFIG_CHUWI_HI10PRO
 #define MAX_CC 		 2000
 #define BATTERY_CAPACITY 6405
 #define BATTERY_RDC0 0x49
-#else
+#elif defined(CONFIG_CHUWI_HIBOOK)
+#define MAX_CV 		 4350
+#define MAX_CC 		 2500
+#define BATTERY_CAPACITY 6300
+#define BATTERY_RDC0 0x54
+#else //CONFIG_CHUWI_VI10PLUS
+#define MAX_CV 		 4200
 #define MAX_CC 		 2500
 #define BATTERY_CAPACITY 8575
 #define BATTERY_RDC0 0x52
 #endif
 #define BATTERY_RDC1 0xC0
 static int fg_bat_curve[] = {
-#ifdef CONFIG_CHUWI_HI10PRO
+#if defined(CONFIG_CHUWI_HI10PRO)
 	0,	0,	0,	0,	0,	0,	0,	1,	2,	3,	4,	12,
 	19,	32,	44,	49,	54,	57,	61,	66,	71,	76,	81,	85,
 	90,	95,	98,	100,	100,	100,	100,	100,
-#else
+#elif defined(CONFIG_CHUWI_HIBOOK)
+	0,	0,	0,	0,	0,	0,	0,	1,	2,	3,	5,	12,
+	19,	33,	45,	50,	54,	57,	61,	67,	72,	77,	81,	85,
+	91,	95,	98,	100,	100,	100,	100,	100,
+#else //CONFIG_CHUWI_VI10PLUS
 	0,	0,	0,	0,	0,	0,	0,	1,	2,	3,	6,	12,
 	20,	36,	48,	53,	57,	61,	63,	69,	74,	79,	83,	88,
 	92,	97,	98,	100,	100,	100,	100,	100,
