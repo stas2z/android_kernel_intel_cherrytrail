@@ -39,17 +39,26 @@
 #define GPIO_OTG_VBUS_INDEX	2
 #define FPO0_USB_COMP_OFFSET	0x01
 #define MAX_CV 		 4200
+#ifdef CONFIG_CHUWI_HI10PRO
+#define MAX_CC 		 2000
+#define BATTERY_CAPACITY 6405
+#define BATTERY_RDC0 0x49
+#else
 #define MAX_CC 		 2500
-
-//Yanghua M10QI Battery profile.
 #define BATTERY_CAPACITY 8575
-#define BATTERY_RDC1 0xC0
 #define BATTERY_RDC0 0x52
+#endif
+#define BATTERY_RDC1 0xC0
 static int fg_bat_curve[] = {
-	0,		0,		0,		0,		0,		0,		0,		1,		2,		3,	
-	6,		12, 	20, 	36, 	48, 	53, 	57, 	61, 	63, 	69, 
-	74, 	79, 	83, 	88, 	92, 	97, 	98, 	100,	100,	100,
-	100,	100,
+#ifdef CONFIG_CHUWI_HI10PRO
+	0,	0,	0,	0,	0,	0,	0,	1,	2,	3,	4,	12,
+	19,	32,	44,	49,	54,	57,	61,	66,	71,	76,	81,	85,
+	90,	95,	98,	100,	100,	100,	100,	100,
+#else
+	0,	0,	0,	0,	0,	0,	0,	1,	2,	3,	6,	12,
+	20,	36,	48,	53,	57,	61,	63,	69,	74,	79,	83,	88,
+	92,	97,	98,	100,	100,	100,	100,	100,
+#endif
 };
 
 /*If need PMIC support power button event report, define it*/
