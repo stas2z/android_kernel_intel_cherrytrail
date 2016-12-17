@@ -2483,6 +2483,14 @@ config INTEL_SOC_NC_STATE
 		This is a debug driver which gets the power states
 		of all North Complex devices
 
+config CHUWI_VI10PLUS
+	bool "Chuwi Vi10 Plus"
+	default n
+
+config CHUWI_HI10PRO
+	bool "Chuwi Hi10 Pro"
+	default n
+
 source "net/Kconfig"
 
 source "drivers/Kconfig"
