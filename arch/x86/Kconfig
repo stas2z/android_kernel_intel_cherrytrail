@@ -2491,6 +2491,10 @@ config CHUWI_HI10PRO
 	bool "Chuwi Hi10 Pro"
 	default n
 
+config CHUWI_HIBOOK
+	bool "Chuwi Hibook"
+	default n
+
 source "net/Kconfig"
 
 source "drivers/Kconfig"
