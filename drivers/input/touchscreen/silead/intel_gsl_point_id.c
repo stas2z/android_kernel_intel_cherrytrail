@@ -21,7 +21,29 @@
 #define	FLAG_ID			(0xf0000000)
 
 #ifdef CONFIG_CHUWI_HIBOOK
-#define SCREEN_X_OFFSET         -30
+static int gsl_corr_x[]=
+{
+	35,85,947,1810,1860,
+};
+
+static int gsl_corr_x_mod[]=
+{
+	-5,62,960,1860,1925,
+};
+
+static int gsl_corr_x_len=sizeof(gsl_corr_x)/sizeof(gsl_corr_x[0]);
+
+static int gsl_corr_y[]=
+{
+	0,100,640,1280,
+};
+
+static int gsl_corr_y_mod[]=
+{
+	-5,85,640,1285,
+};
+
+static int gsl_corr_y_len=sizeof(gsl_corr_y)/sizeof(gsl_corr_y[0]);
 #endif
 
 struct gsl_touch_info
@@ -917,13 +939,36 @@ static unsigned int ScreenResolution(gsl_POINT_TYPE *p)
 {
 	int x,y;
 	unsigned int id;
+#ifdef CONFIG_CHUWI_HIBOOK
+	unsigned int i;
+#endif
 	x = p->x;
 	y = p->y;
 	id = p->id;
 	if(p->key == FALSE)
 	{
+#ifndef CONFIG_CHUWI_HIBOOK
 		y = ((y - match_y[1]) * match_y[0] + 2048)/4096;
 		x = ((x - match_x[1]) * match_x[0] + 2048)/4096 ;
+#else
+		if (x <= gsl_corr_x[0]) x = gsl_corr_x_mod[0];
+		else if (x >= gsl_corr_x[gsl_corr_x_len-1]) x = gsl_corr_x_mod[gsl_corr_x_len-1];
+		else {
+			i = 0;
+			while (x > gsl_corr_x[i+1]) i++;
+			x = ((gsl_corr_x[i+1]-x) * gsl_corr_x_mod[i] + (x - gsl_corr_x[i]) * gsl_corr_x_mod[i+1])
+					/ (gsl_corr_x[i+1] - gsl_corr_x[i]);
+		}
+
+		if (y <= gsl_corr_y[0]) y = gsl_corr_y_mod[0];
+		else if (y >= gsl_corr_y[gsl_corr_y_len-1]) y = gsl_corr_y_mod[gsl_corr_y_len-1];
+		else {
+			i = 0;
+			while (y > gsl_corr_y[i+1]) i++;
+			y = ((gsl_corr_y[i+1]-y) * gsl_corr_y_mod[i] + (y - gsl_corr_y[i]) * gsl_corr_y_mod[i+1])
+					/ (gsl_corr_y[i+1] - gsl_corr_y[i]);
+		}
+#endif
 	}
 	y = y * (int)screen_y_max / ((int)sen_num_nokey * 64);
 	x = x * (int)screen_x_max / ((int)drv_num_nokey * 64);
@@ -947,9 +992,6 @@ static unsigned int ScreenResolution(gsl_POINT_TYPE *p)
 			if(ignore_x[1] >= screen_y_max/2 && x > ignore_x[1])
 				return 0;
 		}
-#ifdef CONFIG_CHUWI_HIBOOK
-		x += SCREEN_X_OFFSET;
-#endif
 		if(y <= (int)edge_cut[2])
 			y = (int)edge_cut[2] + 1;
 		if(y >= screen_y_max - (int)edge_cut[3])
