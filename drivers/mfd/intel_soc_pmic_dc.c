@@ -46,7 +46,7 @@
 #elif defined(CONFIG_CHUWI_HIBOOK)
 #define MAX_CV 		 4350
 #define MAX_CC 		 2500
-#define BATTERY_CAPACITY 6300
+#define BATTERY_CAPACITY 6500
 #define BATTERY_RDC0 0x54
 #else //CONFIG_CHUWI_VI10PLUS
 #define MAX_CV 		 4200
