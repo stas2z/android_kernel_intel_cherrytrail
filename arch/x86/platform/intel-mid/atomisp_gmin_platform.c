@@ -1375,7 +1375,6 @@ DECLARE_PCI_FIXUP_FINAL(PCI_VENDOR_ID_INTEL, 0x0f38, isp_pm_cap_fixup);
  *
  * Call before insmod driver.ko;
  */
- #if 0
 int __init atomisp_unregister_acpi_devices(void)
 {
 	int i;
@@ -1413,5 +1412,4 @@ int __init atomisp_unregister_acpi_devices(void)
 	return 0;
 }
 device_initcall(atomisp_unregister_acpi_devices);
-#endif
 #endif /* CONFIG_VIDEO_CAMERA_PLUG_AND_PLAY */

@@ -41,14 +41,14 @@
 #define MAX_CV 		 4200
 #define MAX_CC 		 2000
 
-//Yanghua M10QI Battery profile.
-#define BATTERY_CAPACITY 6500
+
+#define BATTERY_CAPACITY 7851
 #define BATTERY_RDC1 0xC0
-#define BATTERY_RDC0 0x78
+#define BATTERY_RDC0 0x60
 static int fg_bat_curve[] = {
 	0,		0,		0,		0,		0,		0,		0,		1,		2,		3,	
-	5,		12, 	19, 	33, 	45, 	50, 	54, 	57, 	61, 	67, 
-	72, 	77, 	81, 	85, 	91, 	95, 	98, 	100,	100,	100,
+	5,		12, 	21, 	32, 	45, 	49, 	53, 	57, 	60, 	65, 
+	70, 	75, 	80, 	84, 	90, 	95, 	98, 	100,	100,	100,
 	100,	100,
 };
 

@@ -393,7 +393,7 @@ static void gtp_touch_down(struct goodix_ts_data* ts,s32 id,s32 x,s32 y,s32 w)
     input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, w);
 #else
     input_report_key(ts->input_dev, BTN_TOUCH, 1);
-    input_report_abs(ts->input_dev, ABS_MT_POSITION_X, 1920-x);
+    input_report_abs(ts->input_dev, ABS_MT_POSITION_X, x);
     input_report_abs(ts->input_dev, ABS_MT_POSITION_Y, y);
     input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, w);
     input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, w);
@@ -490,7 +490,7 @@ static void gtp_pen_down(s32 x, s32 y, s32 w, s32 id)
     input_report_abs(ts->pen_dev, ABS_MT_TOUCH_MAJOR, w);
 #else
     input_report_key(ts->pen_dev, BTN_TOUCH, 1);
-    input_report_abs(ts->pen_dev, ABS_MT_POSITION_X, 1920-x);
+    input_report_abs(ts->pen_dev, ABS_MT_POSITION_X, x);
     input_report_abs(ts->pen_dev, ABS_MT_POSITION_Y, y);
     input_report_abs(ts->pen_dev, ABS_MT_PRESSURE, w);
     input_report_abs(ts->pen_dev, ABS_MT_TOUCH_MAJOR, w);
