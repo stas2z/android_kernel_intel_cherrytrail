@@ -162,7 +162,7 @@ static u16 y_old[MAX_CONTACTS+1] = {0};
 static u16 x_new = 0;
 static u16 y_new = 0;
 
-#define ACTIVE_PEN  //Ö÷¶¯±Ê½ÃÕı´úÂë£¬ÓĞÖ÷¶¯±Ê¹¦ÄÜ£¬ĞèÒª´ò¿ªÕâ¸öºê
+#define ACTIVE_PEN  //ä¸»åŠ¨ç¬”çŸ«æ­£ä»£ç ï¼Œæœ‰ä¸»åŠ¨ç¬”åŠŸèƒ½ï¼Œéœ€è¦æ‰“å¼€è¿™ä¸ªå®
 
 
 static int gslX680_init(void)
@@ -1042,9 +1042,9 @@ static void gslX680_ts_worker(struct work_struct *work)
 	{	
 		input_mt_sync(ts->input);
 	#ifdef HAVE_TOUCH_KEY
-		if(key_state_flag)
+		if(key_state_flag == 1)
 		{
-        	input_report_key(ts->input, key, 0);
+        		input_report_key(ts->input, key, 0);
 			input_sync(ts->input);
 			key_state_flag = 0;
 		}
@@ -1052,11 +1052,15 @@ static void gslX680_ts_worker(struct work_struct *work)
 	}
 #endif
 #ifdef HAVE_TOUCH_KEY
-		if(key_state_flag)
+		if(key_state_flag == 2)
 		{
-        	input_report_key(ts->input, key, 0);
+        		input_report_key(ts->input, key, 0);
 			input_sync(ts->input);
 			key_state_flag = 0;
+		}
+		else if(key_state_flag == 1)
+		{
+			key_state_flag = 2;
 		}
 #endif
 	input_sync(ts->input);
