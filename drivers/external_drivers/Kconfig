@@ -21,4 +21,15 @@ if EXTERNAL_CAMERA
 source "drivers/external_drivers/camera/Kconfig"
 endif
 
+menuconfig EXTERNAL_GPS
+    bool "Enable support for GPS"
+    depends on EXTERNAL_DRIVERS
+    default y
+    help
+      Enable support to external GPS devices.
+if EXTERNAL_GPS
+source "drivers/external_drivers/gps/intel_mid_gps/Kconfig"
 endif
+
+endif
+

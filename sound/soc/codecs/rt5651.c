@@ -28,6 +28,9 @@
 #include <linux/acpi.h>
 #include <linux/gpio.h>
 
+#define GON 1
+#define GOFF 0
+
 #define RTK_IOCTL
 #ifdef RTK_IOCTL
 #if defined(CONFIG_SND_HWDEP) || defined(CONFIG_SND_HWDEP_MODULE)
@@ -74,13 +77,20 @@ static struct rt5651_init_reg init_list[] = {
 	/* LOUT */
 	{RT5651_LOUT_MIXER	, 0xc000},
 	{RT5651_LOUT_CTRL1	, 0x8a8a},
-	//{RT5651_LOUT_CTRL2	, 0x8000}, /* Set LOUT to diff. mode */
+#ifdef CONFIG_CHUWI_HI8PRO
+	{RT5651_LOUT_CTRL2	, 0x8000}, /* Set LOUT to diff. mode */
+#endif
 	/* MIC */
 	{RT5651_STO1_ADC_MIXER	, 0x3020},
 	/* {RT5651_STO1_ADC_MIXER	, 0x5042}, */ /* DMICS */
 
+#ifdef CONFIG_CHUWI_HI8PRO
+	{RT5651_IN1_IN2		, 0x1000}, /* set IN1 boost 20db */
+	{RT5651_IN3		, 0x1000}, /* set IN3 boost to 20db */
+#else
 	{RT5651_IN1_IN2		, 0x0140}, /* set IN1 boost 20db */
 //	{RT5651_IN3		, 0x1000}, /* set IN3 boost to 20db */
+#endif
 	/* {RT5651_GPIO_CTRL1	, 0xc000}, */ /* enable gpio1, DMIC1 */
 	/* I2S2 */
 	/* {RT5651_GPIO_CTRL1	, 0x0000}, */ /* I2S-2 Pin -> I2S */
@@ -1195,11 +1205,11 @@ static int rt5651_lout_event(struct snd_soc_dapm_widget *w,
 		snd_soc_update_bits(codec, RT5651_LOUT_CTRL1,
 			RT5651_L_MUTE | RT5651_R_MUTE, 0);
 		mdelay(150);
-		gpio_direction_output(368,1);
+		gpio_direction_output(368,GON);
 		break;
 
 	case SND_SOC_DAPM_PRE_PMD:
-		gpio_direction_output(368,0);
+		gpio_direction_output(368,GOFF);
 		snd_soc_update_bits(codec, RT5651_LOUT_CTRL1,
 			RT5651_L_MUTE | RT5651_R_MUTE,
 			RT5651_L_MUTE | RT5651_R_MUTE);
@@ -2328,7 +2338,7 @@ static int rt5651_probe(struct snd_soc_codec *codec)
 	rt5651_set_bias_level(codec, SND_SOC_BIAS_OFF);
 	rt5651->codec = codec;
 	rt5651->jack_type = RT5651_NO_JACK;
-	gpio_direction_output(368,0);
+	gpio_direction_output(368,GOFF);
 
 #ifdef RTK_IOCTL
 #if defined(CONFIG_SND_HWDEP) || defined(CONFIG_SND_HWDEP_MODULE)
@@ -2370,13 +2380,13 @@ static int rt5651_remove(struct snd_soc_codec *codec)
 static int rt5651_suspend(struct snd_soc_codec *codec)
 {
 	rt5651_set_bias_level(codec, SND_SOC_BIAS_OFF);
-	gpio_direction_output(368,0);
+	gpio_direction_output(368,GOFF);
 	return 0;
 }
 
 static int rt5651_resume(struct snd_soc_codec *codec)
 {
-	//gpio_direction_output(368,1); fix resume noise zengmin
+	//gpio_direction_output(368,GON); fix resume noise zengmin
 	rt5651_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
 	return 0;
 }
@@ -2507,7 +2517,7 @@ static void rt5651_i2c_shutdown(struct i2c_client *client)
 {
 	struct rt5651_priv *rt5651 = i2c_get_clientdata(client);
 	struct snd_soc_codec *codec = rt5651->codec;
-	gpio_direction_output(368,0);
+	gpio_direction_output(368,GOFF);
 
 	if (codec != NULL)
 		rt5651_set_bias_level(codec, SND_SOC_BIAS_OFF);

@@ -355,6 +355,7 @@ static int wifi_plat_dev_drv_resume(struct platform_device *pdev)
 #ifdef CONFIG_ACPI
 static struct acpi_device_id bcm_acpi_id[] = {
 /* ACPI IDs here */
+	{ "RTL8723" },
 	{ "BCM43241" },
 	{ "BCM4321" },
 	{ "BCM43341" },

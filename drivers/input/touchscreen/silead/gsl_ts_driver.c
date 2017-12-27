@@ -40,6 +40,8 @@
 //#include <mach/hardware.h>
 #if defined(CONFIG_CHUWI_HI10PRO)
 #include "gslX68X_hi10pro.h"
+#elif defined(CONFIG_CHUWI_HI8PRO)
+#include "gslX68X_hi8pro.h"
 #elif defined(CONFIG_CHUWI_HIBOOK)
 #include "gslX68X_hibook.h"
 #else //CONFIG_CHUWI_VI10PLUS
@@ -93,18 +95,32 @@ struct key_data {
 };
 
 const u16 key_array[]={
+#if defined(CONFIG_CHUWI_HI8PRO)
+                                      TS_KEY_BACK,
+                                      TS_KEY_HOME,
+                                      TS_KEY_MENU,
+                                      TS_KEY_SEARCH,
+#else
                                       KEY_BACK,
                                       KEY_HOME,
                                       KEY_MENU,
                                       KEY_SEARCH,
+#endif
                                      }; 
 #define MAX_KEY_NUM     (sizeof(key_array)/sizeof(key_array[0]))
 
 struct key_data gsl_key_data[MAX_KEY_NUM] = {
+#if defined(CONFIG_CHUWI_HI8PRO)
+	{TS_KEY_BACK, 2048, 2048, 2048, 2048},
+	{TS_KEY_HOME, 2028, 2068, 2028, 2068},	
+	{TS_KEY_MENU, 2048, 2048, 2048, 2048},
+	{TS_KEY_SEARCH, 2048, 2048, 2048, 2048},
+#else
 	{KEY_BACK, 2048, 2048, 2048, 2048},
 	{KEY_HOME, 2028, 2068, 2028, 2068},	
 	{KEY_MENU, 2048, 2048, 2048, 2048},
 	{KEY_SEARCH, 2048, 2048, 2048, 2048},
+#endif
 };
 #endif
 
@@ -1779,8 +1795,10 @@ static int  gsl_ts_init(void)
 		fw_size =  ARRAY_SIZE(GSLX680_FW_PA02);
     }
 #endif
+#ifndef CONFIG_CHUWI_HI8PRO
 		SCREEN_MAX_X =1280;
 		SCREEN_MAX_Y =1920;
+#endif
 		//i2c_set_pull_strength(1, 2);
 		gsl_config_data_id = gsl_config_data_id_CHT;
 		GSLX680_FW =  GSLX680_FW_CHT;

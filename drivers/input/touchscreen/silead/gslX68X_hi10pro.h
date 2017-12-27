@@ -1,7 +1,8 @@
 #ifndef _GSLX680_H_
 #define _GSLX680_H_
-
+#ifndef DUMP
 #include <asm/intel_em_config.h>
+#endif
 #define 	GSL_NOID_VERSION
 //#define 	GSL_DEBUG       0
 #define 	GSL_DEBUG_ON    0
@@ -167,6 +168,7 @@ static unsigned int gsl_config_data_id_CHT[] =
 	0,0,0,0,0,0,0,0,
 	0,0,0,0,0,0,0,
 };
+
 #endif
 
 static const struct fw_data GSLX680_FW_CHT[] = {

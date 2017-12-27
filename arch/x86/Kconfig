@@ -2493,6 +2493,10 @@ config CHUWI_VI10PLUS
 	bool "Chuwi Vi10 Plus"
 	default n
 
+config CHUWI_HI8PRO
+	bool "Chuwi Hi8 Pro"
+	default n
+
 config CHUWI_HI10PRO
 	bool "Chuwi Hi10 Pro"
 	default n

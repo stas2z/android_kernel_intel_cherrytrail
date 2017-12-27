@@ -38,7 +38,7 @@ config BCM4356
 config BCMDHD_FW_PATH
 	depends on BCMDHD
 	string "Firmware path"
-	default "/system/vendor/firmware/fw_bcmdhd.bin"
+	default "/system/etc/firmware/fw_bcm43438a1.bin"
 	---help---
 	  Path to the firmware file.
 

@@ -1,0 +1,13 @@
+config VIDEO_GC2355
+       tristate "gc2355 sensor support"
+       default m
+       depends on I2C && VIDEO_V4L2
+       ---help---
+	gc2355 sensor support
+
+config VIDEO_GC2355B
+       tristate "gc2355b sensor support"
+       default m
+       depends on I2C && VIDEO_V4L2
+       ---help---
+	gc2355b sensor support

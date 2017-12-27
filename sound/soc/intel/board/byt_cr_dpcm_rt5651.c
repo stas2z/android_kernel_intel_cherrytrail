@@ -53,7 +53,11 @@
 #define BYT_T_BUTTONS_RECHECK	100 /* ms */
 
 /* 0 = 25MHz from crystal, 1 = 19.2MHz from PLL */
+#ifdef CONFIG_CHUWI_HI9PRO
+#define PLAT_CLK_FREQ_XTAL	1
+#else
 #define PLAT_CLK_FREQ_XTAL	0
+#endif
 
 enum {
 	RT5651_GPIO_JD_INT,

@@ -1,7 +1,9 @@
 #ifndef _GSLX680_H_
 #define _GSLX680_H_
 
+#ifndef DUMP
 #include <asm/intel_em_config.h>
+#endif
 #define 	GSL_NOID_VERSION
 //#define 	GSL_DEBUG       0
 #define 	GSL_DEBUG_ON    0

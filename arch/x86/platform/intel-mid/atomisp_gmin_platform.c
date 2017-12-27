@@ -173,6 +173,12 @@ struct atomisp_camera_cht_table {
 };
 
 static struct atomisp_camera_cht_table cht_cam_comp_tab[] = {
+#ifdef CONFIG_CHUWI_HI8PRO
+	{"i2c-GCTI2355:01",  "GCTI2355:01",  "rear",  "i2c-rear:3c",  0x3c, 0x00},
+	{"i2c-OVB2680:00",  "OVB2680:00",  "rear",  "i2c-rear:36",  0x36, 0x00},
+	{"i2c-GCT2355:00",  "GCT2355:00",  "front",  "i2c-front:3c",  0x3c, 0x00},
+	{"i2c-OVTI2680:01", "OVTI2680:00", "front", "i2c-front:10", 0x10, 0x00},
+#else
 	/* OV8858 */
 	{"i2c-OVB2680:00",  "OVB2680:00",  "rear",  "i2c-rear:36",  0x36, 0x00},
 	/* OV5648 */
@@ -185,6 +191,7 @@ static struct atomisp_camera_cht_table cht_cam_comp_tab[] = {
 #endif
 	/* GC2355 */
 	{"i2c-OVTI2680:01", "OVTI2680:01", "front", "i2c-front:10", 0x10, 0x00}
+#endif
 };
 
 
@@ -575,6 +582,16 @@ static const struct gmin_cfg_var cht_camera_config_vars[] = {
 	{ "OVTI2680:01_ClkSrc", 		"0",	"ov2680" },
 	{ "OVTI2680:01_CsiPort",		"0",	"ov2680" },
 	{ "OVTI2680:01_CsiLanes",		"1",	"ov2680" },
+
+	{ "GCT2355:00_CamClk",         "4",    "gc2355b" },
+	{ "GCT2355:00_ClkSrc",         "0",    "gc2355b" },
+	{ "GCT2355:00_CsiPort",        "1",    "gc2355b" },
+	{ "GCT2355:00_CsiLanes",       "1",    "gc2355b" },
+
+	{ "GCTI2355:01_CamClk",         "2",    "gc2355" },
+	{ "GCTI2355:01_ClkSrc",         "0",    "gc2355" },
+	{ "GCTI2355:01_CsiPort",        "0",    "gc2355" },
+	{ "GCTI2355:01_CsiLanes",       "1",    "gc2355" },
 
 	{},
 };

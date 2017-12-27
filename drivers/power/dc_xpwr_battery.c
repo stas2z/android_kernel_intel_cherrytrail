@@ -179,6 +179,9 @@
 #ifdef CONFIG_CHUWI_HI10PRO
 #define STATUS_MON_DELAY_JIFFIES	(HZ * 10)	/*60 sec */
 #define STATUS_MON_FULL_DELAY_JIFFIES	(HZ * 10)	/*30sec */
+#elif defined(CONFIG_CHUWI_HI8PRO)
+#define STATUS_MON_DELAY_JIFFIES	(HZ * 60)	/*60 sec */
+#define STATUS_MON_FULL_DELAY_JIFFIES	(HZ * 30)	/*30sec */
 #else
 #define STATUS_MON_DELAY_JIFFIES	(HZ * 60)	/*60 sec */
 #define STATUS_MON_FULL_DELAY_JIFFIES	(HZ * 30)	/*30sec */

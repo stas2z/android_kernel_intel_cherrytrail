@@ -48,6 +48,11 @@
 #define MAX_CC 		 2500
 #define BATTERY_CAPACITY 6500
 #define BATTERY_RDC0 0x54
+#elif defined(CONFIG_CHUWI_HI8PRO)//CONFIG_CHUWI_HI8PRO
+#define MAX_CV 		 4200
+#define MAX_CC 		 2500
+#define BATTERY_CAPACITY 4300
+#define BATTERY_RDC0 0x49
 #else //CONFIG_CHUWI_VI10PLUS
 #define MAX_CV 		 4200
 #define MAX_CC 		 2500
@@ -64,6 +69,11 @@ static int fg_bat_curve[] = {
 	0,	0,	0,	0,	0,	0,	0,	1,	2,	3,	5,	12,
 	19,	33,	45,	50,	54,	57,	61,	67,	72,	77,	81,	85,
 	91,	95,	98,	100,	100,	100,	100,	100,
+
+#elif defined(CONFIG_CHUWI_HI8PRO)
+	0,	0,	0,	0,	0,	0,	0,	1,	2,	3,	5,	12,
+	19,	32,	44,	49,	54,	57,	61,	66,	71,	76,	81,	85,
+	90,	95,	98,	100,	100,	100,	100,	100,
 #else //CONFIG_CHUWI_VI10PLUS
 	0,	0,	0,	0,	0,	0,	0,	1,	2,	3,	6,	12,
 	20,	36,	48,	53,	57,	61,	63,	69,	74,	79,	83,	88,
