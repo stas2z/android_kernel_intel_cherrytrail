@@ -53,7 +53,7 @@
 #define BYT_T_BUTTONS_RECHECK	100 /* ms */
 
 /* 0 = 25MHz from crystal, 1 = 19.2MHz from PLL */
-#ifdef CONFIG_CHUWI_HI9PRO
+#ifdef CONFIG_CHUWI_HI8PRO
 #define PLAT_CLK_FREQ_XTAL	1
 #else
 #define PLAT_CLK_FREQ_XTAL	0
