@@ -268,10 +268,17 @@ static void _rtw_reg_apply_radar_flags(struct wiphy *wiphy)
 		if (!_rtw_is_radar_freq(ch->center_freq))
 			continue;
 #ifdef CONFIG_DFS
-		if (!(ch->flags & IEEE80211_CHAN_DISABLED))
-			ch->flags |= IEEE80211_CHAN_RADAR |
-			    IEEE80211_CHAN_NO_IBSS;
-#endif
+		#if defined(CONFIG_DFS_MASTER) && (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 14, 0))
+		if (!(ch->flags & IEEE80211_CHAN_DISABLED)) {
+			ch->flags |= IEEE80211_CHAN_RADAR;
+			#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,14,0))
+			ch->flags |= (IEEE80211_CHAN_NO_IBSS|IEEE80211_CHAN_PASSIVE_SCAN);
+			#else
+			ch->flags |= IEEE80211_CHAN_NO_IR;
+			#endif
+		}
+		#endif
+#endif //CONFIG_DFS
 
 #if 0
 		/*
@@ -290,26 +297,6 @@ static void _rtw_reg_apply_radar_flags(struct wiphy *wiphy)
 			    IEEE80211_CHAN_NO_IBSS |
 			    IEEE80211_CHAN_PASSIVE_SCAN;
 #endif
-	}
-}
-
-static int rtw_ieee80211_channel_to_frequency(int chan, int band)
-{
-	/* see 802.11 17.3.8.3.2 and Annex J
-	 * there are overlapping channel numbers in 5GHz and 2GHz bands */
-
-	if (band == IEEE80211_BAND_5GHZ) {
-		if (chan >= 182 && chan <= 196)
-			return 4000 + chan * 5;
-		else
-			return 5000 + chan * 5;
-	} else {		/* IEEE80211_BAND_2GHZ */
-		if (chan == 14)
-			return 2484;
-		else if (chan < 14)
-			return 2407 + chan * 5;
-		else
-			return 0;	/* not supported */
 	}
 }
 
@@ -345,24 +332,22 @@ static void _rtw_reg_apply_flags(struct wiphy *wiphy)
 	// channels apply by channel plans.
 	for (i = 0; i < max_chan_nums; i++) {
 		channel = channel_set[i].ChannelNum;
-		if (channel <= 14)
-			freq =
-			    rtw_ieee80211_channel_to_frequency(channel,
-							       IEEE80211_BAND_2GHZ);
-		else
-			freq =
-			    rtw_ieee80211_channel_to_frequency(channel,
-							       IEEE80211_BAND_5GHZ);
+		freq = rtw_ch2freq(channel);
 
 		ch = ieee80211_get_channel(wiphy, freq);
 		if (ch) {
-			if (channel_set[i].ScanType == SCAN_PASSIVE)
-				// Kernel 3.14 IEEE80211_CHAN_PASSIVE_SCAN is not supported,
-				// Need to be using IEEE80211_CHAN_NO_IR
-				//ch->flags = IEEE80211_CHAN_PASSIVE_SCAN;
-				ch->flags = IEEE80211_CHAN_NO_IR;
-			else
+			if (channel_set[i].ScanType == SCAN_PASSIVE) {
+				#if defined(CONFIG_DFS_MASTER) && (LINUX_VERSION_CODE < KERNEL_VERSION(3, 14, 0))
 				ch->flags = 0;
+				#elif (LINUX_VERSION_CODE < KERNEL_VERSION(3, 14, 0))
+				ch->flags = (IEEE80211_CHAN_NO_IBSS|IEEE80211_CHAN_PASSIVE_SCAN);
+				#else
+				ch->flags = IEEE80211_CHAN_NO_IR;
+				#endif
+			}
+			else {
+				ch->flags = 0;
+			}
 		}
 	}
 
@@ -393,14 +378,7 @@ static void _rtw_reg_apply_flags(struct wiphy *wiphy)
 
 	for (i = 0; i < 37; i++) {
 		channel = channels[i];
-		if (channel <= 14)
-			freq =
-			    rtw_ieee80211_channel_to_frequency(channel,
-							       IEEE80211_BAND_2GHZ);
-		else
-			freq =
-			    rtw_ieee80211_channel_to_frequency(channel,
-							       IEEE80211_BAND_5GHZ);
+		freq = rtw_ch2freq(channel);
 
 		ch = ieee80211_get_channel(wiphy, freq);
 		if (ch) {
@@ -477,32 +455,52 @@ static const struct ieee80211_regdomain *_rtw_regdomain_select(struct
 #endif
 }
 
-static void _rtw_regd_init_wiphy(struct rtw_regulatory *reg,
-				struct wiphy *wiphy,
-				void (*reg_notifier) (struct wiphy * wiphy,
-						     struct regulatory_request *
-						     request))
+void _rtw_reg_notifier(struct wiphy *wiphy, struct regulatory_request *request)
+{
+	struct rtw_regulatory *reg = NULL;
+
+	DBG_8192C("%s\n", __func__);
+
+	_rtw_reg_notifier_apply(wiphy, request, reg);
+}
+
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,9,0))
+int rtw_reg_notifier(struct wiphy *wiphy, struct regulatory_request *request)
+#else
+void rtw_reg_notifier(struct wiphy *wiphy, struct regulatory_request *request)
+#endif
+{
+	_rtw_reg_notifier(wiphy, request);
+	#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,9,0))
+	return 0;
+	#endif
+}
+
+void rtw_reg_notify_by_driver(_adapter *adapter)
+{
+	if ((adapter->rtw_wdev != NULL) && (adapter->rtw_wdev->wiphy)) {
+		struct regulatory_request request;
+		request.initiator = NL80211_REGDOM_SET_BY_DRIVER;
+		rtw_reg_notifier(adapter->rtw_wdev->wiphy, &request);
+	}
+}
+
+static void _rtw_regd_init_wiphy(struct rtw_regulatory *reg, struct wiphy *wiphy)
 {
 	const struct ieee80211_regdomain *regd;
 
-	wiphy->reg_notifier = reg_notifier;
+	wiphy->reg_notifier = rtw_reg_notifier;
 
-	// Kernel 3.14 changed this to remove regulatory
-	// flags to be in wiphy->regulatory_flags, but
-	// for now in first phase of porting we'll just
-	// change the flags here to reflect the new defines
-	// and add in the setting of the regulatory_flags
-	//wiphy->flags |= WIPHY_FLAG_CUSTOM_REGULATORY;
-	//wiphy->flags &= ~WIPHY_FLAG_STRICT_REGULATORY;
-	//wiphy->flags &= ~WIPHY_FLAG_DISABLE_BEACON_HINTS;
-	wiphy->flags |= REGULATORY_CUSTOM_REG;
-	wiphy->flags &= ~REGULATORY_STRICT_REG;
-	wiphy->flags &= ~REGULATORY_DISABLE_BEACON_HINTS;
+	#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,14,0))
+	wiphy->flags |= WIPHY_FLAG_CUSTOM_REGULATORY;
+	wiphy->flags &= ~WIPHY_FLAG_STRICT_REGULATORY;
+	wiphy->flags &= ~WIPHY_FLAG_DISABLE_BEACON_HINTS;
+	#else
 	wiphy->regulatory_flags |= REGULATORY_CUSTOM_REG;
 	wiphy->regulatory_flags &= ~REGULATORY_STRICT_REG;
 	wiphy->regulatory_flags &= ~REGULATORY_DISABLE_BEACON_HINTS;
-
-
+	#endif
+	
 	regd = _rtw_regdomain_select(reg);
 	wiphy_apply_custom_regulatory(wiphy, regd);
 
@@ -523,11 +521,8 @@ static struct country_code_to_enum_rd *_rtw_regd_find_country(u16 countrycode)
 	return NULL;
 }
 
-int rtw_regd_init(_adapter * padapter,
-		  void (*reg_notifier) (struct wiphy * wiphy,
-				       struct regulatory_request * request))
+int rtw_regd_init(_adapter * padapter)
 {
-	//struct registry_priv  *registrypriv = &padapter->registrypriv;
 	struct wiphy *wiphy = padapter->rtw_wdev->wiphy;
 
 #if 0
@@ -545,17 +540,9 @@ int rtw_regd_init(_adapter * padapter,
 		  __func__, rtw_regd->alpha2[0], rtw_regd->alpha2[1]);
 #endif
 
-	_rtw_regd_init_wiphy(NULL, wiphy, reg_notifier);
+	_rtw_regd_init_wiphy(NULL, wiphy);
 
 	return 0;
 }
-
-void rtw_reg_notifier(struct wiphy *wiphy, struct regulatory_request *request)
-{
-	struct rtw_regulatory *reg = NULL;
-
-	DBG_8192C("%s\n", __func__);
-
-	_rtw_reg_notifier_apply(wiphy, request, reg);
-}
 #endif //CONFIG_IOCTL_CFG80211
+
